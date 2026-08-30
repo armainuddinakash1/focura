@@ -184,6 +184,8 @@ function Signup() {
                                 </Alert>
                             )}
 
+                            <div id="clerk-captcha" />
+
                             {/* Submit */}
                             <Button
                                 type="submit"
