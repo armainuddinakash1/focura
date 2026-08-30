@@ -1,6 +1,5 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
-import { currentUser } from "@clerk/nextjs/server";
 
 const PUBLIC_PATHS = new Set([
     "/",
@@ -9,58 +8,48 @@ const PUBLIC_PATHS = new Set([
     "/api/webhook/register",
 ]);
 
-const DASHBOARD_PATH = "/dashboard";
-const ADMIN_DASHBOARD_PATH = "/admin/dashboard";
+const AUTHENTICATED_REDIRECT_PATHS = new Set(["/", "/sign-up", "/sign-in"]);
 
 const redirectToSignIn = (request: NextRequest) =>
-    Response.redirect(new URL("/sign-in", request.url), 302);
+    new Response(null, {
+        status: 307,
+        headers: {
+            location: new URL("/sign-in", request.url).toString(),
+        },
+    });
+
+const redirectToDashboard = (request: NextRequest) =>
+    new Response(null, {
+        status: 307,
+        headers: {
+            location: new URL("/dashboard", request.url).toString(),
+        },
+    });
 
 export default clerkMiddleware(async (auth, request) => {
-    try {
-        const url = new URL(request.url);
-        const pathname = url.pathname;
+    const { userId } = await auth();
+    const pathname = new URL(request.url).pathname;
 
-        if (PUBLIC_PATHS.has(pathname)) {
-            return;
-        }
+    // Skip auth checks for API routes - let them handle auth and return 401
+    if (pathname.startsWith("/api/")) {
+        return;
+    }
 
-        const authState = await auth();
-        const userId = authState.userId;
-        const user = await currentUser();
-        const metadata = user?.publicMetadata as
-            | Record<string, unknown>
-            | undefined;
-        const isSignedIn = Boolean(userId);
-        const isAdmin = Boolean(
-            user &&
-            (metadata?.role === "admin" ||
-                metadata?.isAdmin === true ||
-                metadata?.admin === true),
-        );
-
-        if (!isSignedIn) {
+    // If not signed in, allow only public paths
+    if (!userId) {
+        if (!PUBLIC_PATHS.has(pathname)) {
             return redirectToSignIn(request);
         }
-
-        if (pathname === DASHBOARD_PATH && isAdmin) {
-            url.pathname = ADMIN_DASHBOARD_PATH;
-            return Response.redirect(url, 302);
-        }
-
-        if (pathname === ADMIN_DASHBOARD_PATH && !isAdmin) {
-            url.pathname = DASHBOARD_PATH;
-            return Response.redirect(url, 302);
-        }
-
         return;
-    } catch (error) {
-        console.error("[middleware] auth error:", error);
-        const url = new URL(request.url);
-        if (PUBLIC_PATHS.has(url.pathname)) {
-            return;
-        }
-        return redirectToSignIn(request);
     }
+
+    // If signed in, redirect from auth pages to dashboard
+    if (AUTHENTICATED_REDIRECT_PATHS.has(pathname)) {
+        return redirectToDashboard(request);
+    }
+
+    // Allow access to all other routes when authenticated
+    return;
 });
 
 export const config = {
