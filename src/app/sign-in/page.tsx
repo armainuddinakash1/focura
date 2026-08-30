@@ -134,6 +134,7 @@ function Signin() {
                                 </AlertDescription>
                             </Alert>
                         )}
+                        <div id="clerk-captcha" />
                         <Button
                             type="submit"
                             className="w-full"
