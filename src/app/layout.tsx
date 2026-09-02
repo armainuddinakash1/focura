@@ -1,13 +1,9 @@
 import type { Metadata } from "next";
-import {
-    ClerkProvider,
-    Show,
-    SignInButton,
-    SignUpButton,
-    UserButton,
-} from "@clerk/nextjs";
+import { ClerkProvider, Show, UserButton } from "@clerk/nextjs";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -36,20 +32,32 @@ export default function RootLayout({
         >
             <body className="min-h-full flex flex-col">
                 <ClerkProvider>
-                    {/* <header className="flex justify-end items-center p-4 gap-4 h-16">
+                    <header className="flex justify-between items-center p-4 gap-4 h-16">
                         <Show when="signed-out">
-                            <SignInButton />
-                            <SignUpButton>
-                                <button className="bg-[#6c47ff] text-white rounded-full font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 cursor-pointer">
-                                    Sign Up
-                                </button>
-                            </SignUpButton>
+                            <Link href="/">
+                                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                    ToDo App
+                                </h1>
+                            </Link>
+                            <div>
+                                <Link href="/sign-in">
+                                    <Button variant="ghost">Sign In</Button>
+                                </Link>
+                                <Link href="/sign-up">
+                                    <Button>Sign Up</Button>
+                                </Link>
+                            </div>
                         </Show>
                         <Show when="signed-in">
+                            <Link href="/dashboard">
+                                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                    ToDo App
+                                </h1>
+                            </Link>
                             <UserButton />
                         </Show>
-                    </header> */}
-                    {children}
+                    </header>
+                    {children}                
                 </ClerkProvider>
             </body>
         </html>
