@@ -57,7 +57,13 @@ export default function RootLayout({
                             <UserButton />
                         </Show>
                     </header>
-                    {children}                
+                    {children}
+                    <footer className="flex justify-center items-center p-4 gap-4 h-16 border-t">
+                        <p className="text-sm text-gray-500">
+                            &copy; {new Date().getFullYear()} ToDo App. All
+                            rights reserved.
+                        </p>
+                    </footer>
                 </ClerkProvider>
             </body>
         </html>
