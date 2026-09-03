@@ -99,11 +99,7 @@ export default function DashboardPage() {
                 <TodoForm onAddTodo={handleAddTodo} />
 
                 {isLoading ? (
-                    <div className="flex justify-center py-12">
-                        <div className="text-gray-600 dark:text-gray-400">
-                            Loading your todos...
-                        </div>
-                    </div>
+                    <Loader className="mx-auto mt-2" />
                 ) : (
                     <TodoList
                         todos={todos}
