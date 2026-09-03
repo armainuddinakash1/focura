@@ -1,7 +1,7 @@
 "use client";
 
 import { useSignUp } from "@clerk/nextjs";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
@@ -50,6 +50,8 @@ function SignUpComponent() {
     async function submit(e: React.SyntheticEvent<HTMLFormElement>) {
         e.preventDefault();
 
+        if (isLoading) return;
+
         try {
             const createResult = await signUp.password({
                 emailAddress,
@@ -77,6 +79,8 @@ function SignUpComponent() {
      */
     async function onPressVerify(e: React.SyntheticEvent<HTMLFormElement>) {
         e.preventDefault();
+
+        if (isLoading) return;
 
         try {
             const verifyResult = await signUp.verifications.verifyEmailCode({
@@ -113,6 +117,7 @@ function SignUpComponent() {
                 <CardTitle className="text-center text-2xl font-bold">
                     Sign Up for Todo Master
                 </CardTitle>
+                <Loader />
             </CardHeader>
 
             <CardContent>
