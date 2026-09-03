@@ -1,5 +1,5 @@
 import { useSignIn } from "@clerk/nextjs";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
@@ -86,6 +86,7 @@ function SignInComponent() {
                 <CardTitle className="text-2xl font-bold text-center">
                     Sign In to Todo Master
                 </CardTitle>
+                <Loader />
             </CardHeader>
             <CardContent>
                 <form onSubmit={submit} className="space-y-4">
