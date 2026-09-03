@@ -63,7 +63,7 @@ export default function DashboardPage() {
     if (!isLoaded) {
         return (
             <div className="flex items-center justify-center min-h-screen">
-                <Loader />
+                <Loader className="mx-auto mt-2" />
             </div>
         );
     }

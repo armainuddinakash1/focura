@@ -1,3 +1,4 @@
+"use client"
 import { useSignIn } from "@clerk/nextjs";
 import { Eye, EyeOff, Loader } from "lucide-react";
 import Link from "next/link";
@@ -86,7 +87,7 @@ function SignInComponent() {
                 <CardTitle className="text-2xl font-bold text-center">
                     Sign In to Todo Master
                 </CardTitle>
-                <Loader />
+                {isLoading && <Loader className="mx-auto mt-2" />}
             </CardHeader>
             <CardContent>
                 <form onSubmit={submit} className="space-y-4">

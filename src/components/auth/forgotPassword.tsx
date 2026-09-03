@@ -120,7 +120,7 @@ export default function ForgotPassword() {
         <div>
             <h1>Forgot Password?</h1>
 
-            <Loader />
+            {isLoading && <Loader className="mx-auto mt-2" />}
 
             {/* Step 1 UI: Collect the user's email so you can send them a password reset code */}
             {!codeSent && (

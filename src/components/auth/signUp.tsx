@@ -120,7 +120,7 @@ function SignUpComponent() {
                 <CardTitle className="text-center text-2xl font-bold">
                     Sign Up for Todo Master
                 </CardTitle>
-                <Loader />
+                {isLoading && <Loader className="mx-auto mt-2" />}
             </CardHeader>
 
             <CardContent>
