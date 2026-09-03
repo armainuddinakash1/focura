@@ -41,7 +41,10 @@ function SignUpComponent() {
      * Clerk error
      */
     // errors from Clerk may have varying shapes; cast to any to safely access the first message
-    const errorMessage = (errors as any)?.[0]?.message ?? "";
+    const errorMessage =
+        errors?.global?.[0]?.message ??
+        errors?.fields?.emailAddress?.message ??
+        errors?.fields?.password?.message;
 
     /*
      * Create the account and send
