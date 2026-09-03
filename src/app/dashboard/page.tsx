@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import TodoForm from "@/components/todo/TodoForm";
 import TodoList from "@/components/todo/TodoList";
+import { Loader } from "lucide-react";
 
 interface Todo {
     id: string;
@@ -62,7 +63,7 @@ export default function DashboardPage() {
     if (!isLoaded) {
         return (
             <div className="flex items-center justify-center min-h-screen">
-                <div className="text-lg text-gray-600">Loading...</div>
+                <Loader />
             </div>
         );
     }
