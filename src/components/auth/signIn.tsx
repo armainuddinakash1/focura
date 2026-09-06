@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import { useSignIn } from "@clerk/nextjs";
 import { Eye, EyeOff, Loader } from "lucide-react";
 import Link from "next/link";
@@ -63,31 +63,14 @@ function SignInComponent() {
 
             router.push("/dashboard");
         }
-
-        // else {
-        //     console.log(JSON.stringify(result, null, 2));
-        // }
-        // } catch (error) {
-        //     if (isClerkAPIResponseError(error)) {
-        //         const clerkErrors: ErrorItem[] = [];
-        //         error.errors.map((err) => {
-        //             console.log(err.code);
-        //             console.log(err.message);
-        //             clerkErrors.push({ code: err.code, message: err.message });
-        //         });
-        //         setErrorArr(clerkErrors);
-        //     } else {
-        //         console.log(error);
-        //     }
-        // }
     }
     return (
         <Card className="w-full max-w-md">
             <CardHeader>
                 <CardTitle className="text-2xl font-bold text-center">
-                    Sign In to Todo Master
+                    Sign In
                 </CardTitle>
-                {isLoading && <Loader className="mx-auto mt-2" />}
+                {isLoading && <Loader className="mx-auto mt-2" />}{" "}
             </CardHeader>
             <CardContent>
                 <form onSubmit={submit} className="space-y-4">
@@ -102,8 +85,16 @@ function SignInComponent() {
                             disabled={isLoading}
                         />
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="password">Password</Label>
+                    <div className="grid gap-2">
+                        <div className="flex items-center">
+                            <Label htmlFor="password">Password</Label>
+                            <a
+                                href="/forgot-password"
+                                className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
+                            >
+                                Forgot your password?
+                            </a>
+                        </div>
                         <div className="relative">
                             <Input
                                 type={showPassword ? "text" : "password"}
