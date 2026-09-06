@@ -118,7 +118,7 @@ function SignUpComponent() {
         <Card className="w-full max-w-md">
             <CardHeader>
                 <CardTitle className="text-center text-2xl font-bold">
-                    Sign Up for Todo Master
+                    Sign Up
                 </CardTitle>
                 {isLoading && <Loader className="mx-auto mt-2" />}
             </CardHeader>
@@ -143,8 +143,16 @@ function SignUpComponent() {
                         </div>
 
                         {/* Password */}
-                        <div className="space-y-2">
-                            <Label htmlFor="password">Password</Label>
+                        <div className="grid gap-2">
+                            <div className="flex items-center">
+                                <Label htmlFor="password">Password</Label>
+                                <Link
+                                    href="/forgot-password"
+                                    className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
+                                >
+                                    Forgot your password?
+                                </Link>
+                            </div>
 
                             <div className="relative">
                                 <Input
@@ -203,8 +211,18 @@ function SignUpComponent() {
                 ) : (
                     <form onSubmit={onPressVerify} className="space-y-4">
                         {/* Verification code */}
-                        <div className="space-y-2">
-                            <Label htmlFor="code">Verification Code</Label>
+                        <div className="grid gap-2">
+                            <div className="flex items-center">
+                                <Label htmlFor="password">
+                                    Verification Code
+                                </Label>
+                                <Link
+                                    href="/sign-in"
+                                    className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
+                                >
+                                    Not you?
+                                </Link>
+                            </div>
 
                             <Input
                                 id="code"
