@@ -5,6 +5,7 @@ const PUBLIC_PATHS = new Set([
     "/",
     "/sign-up",
     "/sign-in",
+    "/forgot-password",
     "/api/webhook/register",
 ]);
 
