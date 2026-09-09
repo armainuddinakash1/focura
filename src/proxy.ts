@@ -6,7 +6,7 @@ const PUBLIC_PATHS = new Set([
     "/sign-up",
     "/sign-in",
     "/forgot-password",
-    "/api/webhook/register",
+    "/api/webhooks/clerk",
 ]);
 
 const AUTHENTICATED_REDIRECT_PATHS = new Set(["/", "/sign-up", "/sign-in"]);
