@@ -58,12 +58,11 @@ export async function POST(req: NextRequest) {
          * If this ID already exists, this delivery has already
          * been processed successfully.
          */
-        const existingWebhook =
-            await prisma.processedWebhook.findUnique({
-                where: {
-                    webhookId,
-                },
-            });
+        const existingWebhook = await prisma.processedWebhook.findUnique({
+            where: {
+                webhookId,
+            },
+        });
 
         if (existingWebhook) {
             return NextResponse.json({
@@ -103,12 +102,9 @@ export async function POST(req: NextRequest) {
                  * the first email in the array is not guaranteed
                  * to be the user's primary email.
                  */
-                const primaryEmailAddress =
-                    event.data.email_addresses.find(
-                        (email) =>
-                            email.id ===
-                            event.data.primary_email_address_id,
-                    );
+                const primaryEmailAddress = event.data.email_addresses.find(
+                    (email) => email.id === event.data.primary_email_address_id,
+                );
 
                 /*
                  * Your Prisma schema requires email.
@@ -122,39 +118,68 @@ export async function POST(req: NextRequest) {
                     );
                 }
 
-                const email =
-                    primaryEmailAddress.email_address;
+                const email = primaryEmailAddress.email_address;
 
                 /*
-                 * Upsert using clerkId.
+                 * 1. Try to find the user using the current Clerk ID.
                  *
-                 * IMPORTANT:
-                 *
-                 * User.id is your Prisma-generated CUID.
-                 *
-                 * User.clerkId is the Clerk user ID.
+                 * This is the normal path for user.updated.
                  */
-                await tx.user.upsert({
+                const existingClerkUser = await tx.user.findUnique({
                     where: {
                         clerkId: clerkUserId,
                     },
-
-                    update: {
-                        email,
-
-                        /*
-                         * If the user was previously soft-deleted
-                         * but Clerk sends a valid user.updated event,
-                         * restore the local record.
-                         */
-                        deletedAt: null,
-                    },
-
-                    create: {
-                        clerkId: clerkUserId,
-                        email,
-                    },
                 });
+
+                if (existingClerkUser) {
+                    await tx.user.update({
+                        where: {
+                            id: existingClerkUser.id,
+                        },
+                        data: {
+                            email,
+                            deletedAt: null,
+                        },
+                    });
+                } else {
+                    /*
+                     * 2. No user exists with this Clerk ID.
+                     *
+                     * Check whether an old Prisma user exists
+                     * with the same email.
+                     */
+                    const existingEmailUser = await tx.user.findUnique({
+                        where: {
+                            email,
+                        },
+                    });
+
+                    if (existingEmailUser) {
+                        /*
+                         * Reconnect the existing Prisma user to
+                         * the newly created Clerk account.
+                         */
+                        await tx.user.update({
+                            where: {
+                                id: existingEmailUser.id,
+                            },
+                            data: {
+                                clerkId: clerkUserId,
+                                deletedAt: null,
+                            },
+                        });
+                    } else {
+                        /*
+                         * 3. Completely new user.
+                         */
+                        await tx.user.create({
+                            data: {
+                                clerkId: clerkUserId,
+                                email,
+                            },
+                        });
+                    }
+                }
             }
 
             /*
