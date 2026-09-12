@@ -18,7 +18,7 @@ async function getUserOrUnauthorized() {
     return { user, response: null };
 }
 
-async function getTodoForUser(userId: string, todoId: string) {
+async function getTodoById(userId: string, todoId: string) {
     return prisma.todo.findFirst({
         where: {
             id: todoId,
@@ -38,13 +38,24 @@ export async function GET(
     }
 
     const { id } = await params;
-    const todo = await getTodoForUser(user.id, id);
 
-    if (!todo) {
-        return NextResponse.json({ error: "Todo not found" }, { status: 404 });
+    try {
+        const todo = await getTodoById(user.id, id);
+
+        if (!todo) {
+            return NextResponse.json(
+                { error: "Todo not found" },
+                { status: 404 },
+            );
+        }
+
+        return NextResponse.json(todo);
+    } catch (error) {
+        return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 },
+        );
     }
-
-    return NextResponse.json(todo);
 }
 
 export async function PATCH(
@@ -58,11 +69,6 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const existingTodo = await getTodoForUser(user.id, id);
-
-    if (!existingTodo) {
-        return NextResponse.json({ error: "Todo not found" }, { status: 404 });
-    }
 
     let payload: { title?: string; completed?: boolean };
 
@@ -74,6 +80,13 @@ export async function PATCH(
     } catch {
         return NextResponse.json(
             { error: "Invalid JSON body" },
+            { status: 400 },
+        );
+    }
+
+    if (payload.title === undefined && payload.completed === undefined) {
+        return NextResponse.json(
+            { error: "At least one field is required" },
             { status: 400 },
         );
     }
@@ -100,7 +113,7 @@ export async function PATCH(
 
         if (!trimmedTitle) {
             return NextResponse.json(
-                { error: "Title cannot be empty" },
+                { error: "Title cannot be empty string" },
                 { status: 400 },
             );
         }
@@ -108,17 +121,37 @@ export async function PATCH(
         payload.title = trimmedTitle;
     }
 
-    const updatedTodo = await prisma.todo.update({
-        where: { id: existingTodo.id },
-        data: {
-            ...(payload.title !== undefined ? { title: payload.title } : {}),
-            ...(payload.completed !== undefined
-                ? { completed: payload.completed }
-                : {}),
-        },
-    });
+    try {
+        const existingTodo = await getTodoById(user.id, id);
 
-    return NextResponse.json(updatedTodo);
+        if (!existingTodo) {
+            return NextResponse.json(
+                { error: "Todo not found" },
+                { status: 404 },
+            );
+        }
+
+        const updatedTodo = await prisma.todo.update({
+            where: {
+                id: existingTodo.id,
+            },
+            data: {
+                ...(payload.title !== undefined
+                    ? { title: payload.title }
+                    : {}),
+                ...(payload.completed !== undefined
+                    ? { completed: payload.completed }
+                    : {}),
+            },
+        });
+
+        return NextResponse.json(updatedTodo);
+    } catch (error) {
+        return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 },
+        );
+    }
 }
 
 export async function PUT(
@@ -132,11 +165,6 @@ export async function PUT(
     }
 
     const { id } = await params;
-    const existingTodo = await getTodoForUser(user.id, id);
-
-    if (!existingTodo) {
-        return NextResponse.json({ error: "Todo not found" }, { status: 404 });
-    }
 
     let payload: { title?: string; completed?: boolean };
 
@@ -168,15 +196,33 @@ export async function PUT(
         );
     }
 
-    const updatedTodo = await prisma.todo.update({
-        where: { id: existingTodo.id },
-        data: {
-            title,
-            completed: payload.completed,
-        },
-    });
+    try {
+        const existingTodo = await getTodoById(user.id, id);
 
-    return NextResponse.json(updatedTodo);
+        if (!existingTodo) {
+            return NextResponse.json(
+                { error: "Todo not found" },
+                { status: 404 },
+            );
+        }
+
+        const updatedTodo = await prisma.todo.update({
+            where: {
+                id: existingTodo.id,
+            },
+            data: {
+                title,
+                completed: payload.completed,
+            },
+        });
+
+        return NextResponse.json(updatedTodo);
+    } catch (error) {
+        return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 },
+        );
+    }
 }
 
 export async function DELETE(
@@ -190,15 +236,31 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const existingTodo = await getTodoForUser(user.id, id);
 
-    if (!existingTodo) {
-        return NextResponse.json({ error: "Todo not found" }, { status: 404 });
+    try {
+        const existingTodo = await getTodoById(user.id, id);
+
+        if (!existingTodo) {
+            return NextResponse.json(
+                { error: "Todo not found" },
+                { status: 404 },
+            );
+        }
+
+        await prisma.todo.delete({
+            where: {
+                id: existingTodo.id,
+            },
+        });
+
+        return NextResponse.json({
+            success: true,
+            deletedId: existingTodo.id,
+        });
+    } catch (error) {
+        return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 },
+        );
     }
-
-    await prisma.todo.delete({
-        where: { id: existingTodo.id },
-    });
-
-    return NextResponse.json({ success: true, deletedId: existingTodo.id });
 }
