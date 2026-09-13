@@ -3,14 +3,30 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 async function getUserOrUnauthorized() {
-    const user = await currentUser();
+    const clerkUser = await currentUser();
 
-    if (!user) {
+    if (!clerkUser) {
         return {
             user: null,
             response: NextResponse.json(
                 { error: "Unauthorized" },
                 { status: 401 },
+            ),
+        };
+    }
+
+    const user = await prisma.user.findUnique({
+        where: {
+            clerkId: clerkUser.id,
+        },
+    });
+
+    if (!user) {
+        return {
+            user: null,
+            response: NextResponse.json(
+                { error: "User not found" },
+                { status: 404 },
             ),
         };
     }
