@@ -16,6 +16,7 @@ interface Todo {
 
 export default function DashboardPage() {
     const { isLoaded, userId } = useAuth();
+
     const [todos, setTodos] = useState<Todo[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -26,9 +27,16 @@ export default function DashboardPage() {
         const fetchTodos = async () => {
             try {
                 setIsLoading(true);
+                setError(null);
+
                 const response = await fetch("/api/todo");
-                if (!response.ok) throw new Error("Failed to fetch todos");
-                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error("Failed to fetch todos");
+                }
+
+                const data: Todo[] = await response.json();
+
                 setTodos(data);
             } catch (err) {
                 setError(
@@ -44,26 +52,28 @@ export default function DashboardPage() {
         fetchTodos();
     }, [isLoaded, userId]);
 
-    const handleAddTodo = (newTodo: Todo) => {
-        setTodos([newTodo, ...todos]);
+    const handleAddTodo = async (newTodo: Todo) => {
+        setTodos((currentTodos) => [newTodo, ...currentTodos]);
     };
 
     const handleUpdateTodo = (updatedTodo: Todo) => {
-        setTodos(
-            todos.map((todo) =>
+        setTodos((currentTodos) =>
+            currentTodos.map((todo) =>
                 todo.id === updatedTodo.id ? updatedTodo : todo,
             ),
         );
     };
 
     const handleDeleteTodo = (id: string) => {
-        setTodos(todos.filter((todo) => todo.id !== id));
+        setTodos((currentTodos) =>
+            currentTodos.filter((todo) => todo.id !== id),
+        );
     };
 
     if (!isLoaded) {
         return (
             <div className="flex items-center justify-center min-h-screen">
-                <Loader className="mx-auto mt-2" />
+                <Loader className="mx-auto mt-2 animate-spin" />
             </div>
         );
     }
@@ -85,6 +95,7 @@ export default function DashboardPage() {
                     <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
                         My Todos
                     </h1>
+
                     <p className="text-gray-600 dark:text-gray-400">
                         Stay organized and manage your tasks efficiently
                     </p>
@@ -99,7 +110,7 @@ export default function DashboardPage() {
                 <TodoForm onAddTodo={handleAddTodo} />
 
                 {isLoading ? (
-                    <Loader className="mx-auto mt-2" />
+                    <Loader className="mx-auto mt-2 animate-spin" />
                 ) : (
                     <TodoList
                         todos={todos}
