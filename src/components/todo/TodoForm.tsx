@@ -2,8 +2,16 @@
 
 import { FormEvent, useState } from "react";
 
+interface Todo {
+    id: string;
+    title: string;
+    completed: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
 interface TodoFormProps {
-    onAddTodo: (todo: any) => void;
+    onAddTodo: (todo: Todo) => void;
 }
 
 export default function TodoForm({ onAddTodo }: TodoFormProps) {
