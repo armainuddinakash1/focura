@@ -1,40 +1,18 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useSubscription } from "@/context/SubscriptionContext";
+import { useState } from "react";
 function SubscriptionPage() {
-    const [subscribed, setSubscribed] = useState(false);
-    const [loading, setLoading] = useState(false);
+    const { isSubscribed, isLoading, refreshSubscription } = useSubscription();
+    const [actionLoading, setActionLoading] = useState(false);
 
-    useEffect(() => {
-        const getSubscriptionStatus = async () => {
-            setLoading(true);
-            try {
-                const response = await fetch("/api/subscription");
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(
-                        data.error || "Failed to fetch subscription status",
-                    );
-                }
-
-                setSubscribed(data.isSubscribed);
-            } catch (error) {
-                console.error("Subscription status error:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        getSubscriptionStatus();
-    }, []);
+    const loading = isLoading || actionLoading;
 
     const handleSubscription = async () => {
-        const newSubscriptionState = !subscribed;
+        const newSubscriptionState = !isSubscribed;
 
         try {
-            setLoading(true);
+            setActionLoading(true);
 
             const response = await fetch("/api/subscription", {
                 method: "PATCH",
@@ -52,21 +30,19 @@ function SubscriptionPage() {
                 throw new Error(data.error || "Failed to update subscription");
             }
 
-            setSubscribed(newSubscriptionState);
+            refreshSubscription();
         } catch (error) {
             console.error("Subscription error:", error);
         } finally {
-            setLoading(false);
+            setActionLoading(false);
         }
     };
     return (
-        // <div className="flex min-h-screen items-top justify-center bg-background text-4xl">
-        <div className="flex min-h-screen flex-col items-center justify-start text-4xl">
-            {/* align items vertically */}
+        <div className="flex min-h-screen flex-col items-center justify-start text-4xl bg-linear-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-slate-800 ">
             <h1>
                 {loading
-                    ? "..."
-                    : subscribed
+                    ? "Loading..."
+                    : isSubscribed
                       ? "You are a premium user"
                       : "Subscribe to create more todos"}
             </h1>
@@ -75,7 +51,7 @@ function SubscriptionPage() {
                 onClick={handleSubscription}
                 disabled={loading}
             >
-                {loading ? "..." : subscribed ? "Unsubscribe" : "Subscribe"}
+                {loading ? "..." : isSubscribed ? "Unsubscribe" : "Subscribe"}
             </Button>
         </div>
     );
