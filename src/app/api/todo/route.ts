@@ -93,6 +93,24 @@ export async function POST(request: Request) {
         );
     }
 
+    // Free users can create a maximum of 3 todos
+    if (!user.isSubscribed) {
+        const todoCount = await prisma.todo.count({
+            where: {
+                userId: user.id,
+            },
+        });
+
+        if (todoCount >= 3) {
+            return NextResponse.json(
+                {
+                    error: "Free users can only create up to 3 todos. Subscribe to create more.",
+                },
+                { status: 403 },
+            );
+        }
+    }
+
     try {
         const newTodo = await prisma.todo.create({
             data: {
@@ -105,6 +123,7 @@ export async function POST(request: Request) {
         return NextResponse.json(newTodo, { status: 201 });
     } catch (error) {
         console.error("Error creating todo:", error);
+
         return NextResponse.json(
             { error: "Failed to create todo" },
             { status: 500 },
