@@ -89,7 +89,7 @@ export default function DashboardPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-slate-800 py-8 px-4">
+        <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-slate-800 py-8 px-4">
             <div className="max-w-2xl mx-auto">
                 <div className="mb-8">
                     <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
