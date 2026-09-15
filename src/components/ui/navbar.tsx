@@ -36,7 +36,7 @@ function Navbar() {
                                 ? "Loading..."
                                 : isSubscribed
                                   ? "Premium user"
-                                  : "Regular user"}
+                                  : "Subscribe"}
                         </Button>
                     </Link>
                     <UserButton />

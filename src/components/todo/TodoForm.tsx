@@ -21,6 +21,7 @@ export default function TodoForm({ onAddTodo }: TodoFormProps) {
 
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+
         if (!title.trim()) {
             setError("Title is required");
             return;
@@ -32,19 +33,28 @@ export default function TodoForm({ onAddTodo }: TodoFormProps) {
 
             const response = await fetch("/api/todo", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                },
                 body: JSON.stringify({
                     title: title.trim(),
                 }),
             });
 
-            if (!response.ok) throw new Error("Failed to create todo");
+            const data = await response.json();
 
-            const newTodo = await response.json();
-            onAddTodo(newTodo);
+            if (!response.ok) {
+                throw new Error(data.error || "Something went wrong");
+            }
+
+            onAddTodo(data);
             setTitle("");
         } catch (err) {
-            setError(err instanceof Error ? err.message : "An error occurred while creating new todo");
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : "Something went wrong",
+            );
         } finally {
             setIsLoading(false);
         }
@@ -53,28 +63,29 @@ export default function TodoForm({ onAddTodo }: TodoFormProps) {
     return (
         <form
             onSubmit={handleSubmit}
-            className="mb-8 bg-white dark:bg-slate-800 rounded-lg shadow-md p-6"
+            className="mb-8 rounded-lg bg-white p-6 shadow-md dark:bg-slate-800"
         >
             <div className="mb-4">
                 <label
                     htmlFor="title"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                    className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
                 >
                     Task Title *
                 </label>
+
                 <input
                     id="title"
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="What needs to be done?"
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white"
                     disabled={isLoading}
                 />
             </div>
 
             {error && (
-                <div className="mb-4 text-red-600 dark:text-red-400 text-sm">
+                <div className="mb-4 text-sm text-red-600 dark:text-red-400">
                     {error}
                 </div>
             )}
@@ -82,7 +93,7 @@ export default function TodoForm({ onAddTodo }: TodoFormProps) {
             <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                className="w-full rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-gray-400"
             >
                 {isLoading ? "Adding..." : "Add Todo"}
             </button>
