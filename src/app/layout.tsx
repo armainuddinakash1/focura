@@ -3,6 +3,7 @@ import { ClerkProvider, Show, UserButton } from "@clerk/nextjs";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/ui/navbar";
+import { SubscriptionProvider } from "@/context/SubscriptionContext";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -31,14 +32,16 @@ export default function RootLayout({
         >
             <body className="min-h-full flex flex-col">
                 <ClerkProvider>
-                    <Navbar/>
-                    {children}
-                    <footer className="flex justify-center items-center p-4 gap-4 h-16 border-t">
-                        <p className="text-sm text-gray-500">
-                            &copy; {new Date().getFullYear()} ToDo App. All
-                            rights reserved.
-                        </p>
-                    </footer>
+                    <SubscriptionProvider>
+                        <Navbar />
+                        {children}
+                        <footer className="flex justify-center items-center p-4 gap-4 h-16 border-t">
+                            <p className="text-sm text-gray-500">
+                                &copy; {new Date().getFullYear()} ToDo App. All
+                                rights reserved.
+                            </p>
+                        </footer>
+                    </SubscriptionProvider>
                 </ClerkProvider>
             </body>
         </html>
