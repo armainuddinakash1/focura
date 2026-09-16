@@ -1,5 +1,6 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 
 type SubscriptionContextType = {
     isSubscribed: boolean;
@@ -16,12 +17,21 @@ export function SubscriptionProvider({
 }: {
     children: React.ReactNode;
 }) {
-    // state will go here
+    const { userId } = useAuth();
+
     const [isSubscribed, setIsSubscribed] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
     const refreshSubscription = async () => {
+        // No user is signed in
+        if (!userId) {
+            setIsSubscribed(false);
+            setIsLoading(false);
+            return;
+        }
+
         setIsLoading(true);
+
         try {
             const response = await fetch("/api/subscription");
 
@@ -36,18 +46,19 @@ export function SubscriptionProvider({
             setIsSubscribed(data.isSubscribed);
         } catch (error) {
             console.error("Subscription status error:", error);
+            setIsSubscribed(false);
         } finally {
             setIsLoading(false);
         }
     };
+
     useEffect(() => {
         refreshSubscription();
-    }, []);
+    }, [userId]);
 
     return (
         <SubscriptionContext.Provider
             value={{
-                // state will go here
                 isSubscribed,
                 isLoading,
                 refreshSubscription,
