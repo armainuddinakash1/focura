@@ -28,9 +28,12 @@ function SignUpComponent() {
 
     const [emailAddress, setEmailAddress] = useState("");
     const [password, setPassword] = useState("");
+    const [firstName, setFirstName] = useState("");
+    const [lastName, setLastName] = useState("");
     const [code, setCode] = useState("");
     const [pendingVerification, setPendingVerification] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [error, setError] = useState("");
 
     /*
      * Clerk request state
@@ -41,10 +44,12 @@ function SignUpComponent() {
      * Clerk error
      */
     // errors from Clerk may have varying shapes; cast to any to safely access the first message
-    const errorMessage =
+    const clerkError =
         errors?.global?.[0]?.message ??
         errors?.fields?.emailAddress?.message ??
         errors?.fields?.password?.message;
+
+    const errorMessage = clerkError || error;
 
     /*
      * Create the account and send
@@ -55,10 +60,22 @@ function SignUpComponent() {
 
         if (isLoading) return;
 
+        if (!emailAddress.trim()) {
+            setError("Email is required");
+            return;
+        }
+
+        if (!password) {
+            setError("Password is required");
+            return;
+        }
+
         try {
             const createResult = await signUp.password({
                 emailAddress,
                 password,
+                firstName,
+                lastName,
             });
 
             if (createResult.error) {
@@ -137,6 +154,32 @@ function SignUpComponent() {
                                 onChange={(e) =>
                                     setEmailAddress(e.target.value)
                                 }
+                                required
+                                disabled={isLoading}
+                            />
+                        </div>
+                        {/* First Name */}
+                        <div className="space-y-2">
+                            <Label htmlFor="first-name">First Name</Label>
+
+                            <Input
+                                id="first-name"
+                                type="text"
+                                value={firstName}
+                                onChange={(e) => setFirstName(e.target.value)}
+                                required
+                                disabled={isLoading}
+                            />
+                        </div>
+                        {/* Last Name */}
+                        <div className="space-y-2">
+                            <Label htmlFor="last-name">Last Name</Label>
+
+                            <Input
+                                id="last-name"
+                                type="text"
+                                value={lastName}
+                                onChange={(e) => setLastName(e.target.value)}
                                 required
                                 disabled={isLoading}
                             />
