@@ -138,6 +138,8 @@ export async function POST(req: NextRequest) {
                         },
                         data: {
                             email,
+                            firstName: event.data.first_name,
+                            lastName: event.data.last_name,
                             deletedAt: null,
                         },
                     });
@@ -165,6 +167,8 @@ export async function POST(req: NextRequest) {
                             },
                             data: {
                                 clerkId: clerkUserId,
+                                firstName: event.data.first_name,
+                                lastName: event.data.last_name,
                                 deletedAt: null,
                             },
                         });
@@ -175,6 +179,8 @@ export async function POST(req: NextRequest) {
                         await tx.user.create({
                             data: {
                                 clerkId: clerkUserId,
+                                firstName: event.data.first_name,
+                                lastName: event.data.last_name,
                                 email,
                             },
                         });
