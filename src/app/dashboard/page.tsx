@@ -1,10 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
+import { ArrowRight, ListTodo } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
 import TodoForm from "@/components/todo/TodoForm";
 import TodoList from "@/components/todo/TodoList";
-import { Loader } from "lucide-react";
+import { PageHeader } from "@/components/shared/page-header";
+import { LoadingState } from "@/components/shared/loading-state";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 interface Todo {
     id: string;
@@ -36,7 +42,6 @@ export default function DashboardPage() {
                 }
 
                 const data: Todo[] = await response.json();
-
                 setTodos(data);
             } catch (err) {
                 setError(
@@ -49,10 +54,10 @@ export default function DashboardPage() {
             }
         };
 
-        fetchTodos();
+        void fetchTodos();
     }, [isLoaded, userId]);
 
-    const handleAddTodo = async (newTodo: Todo) => {
+    const handleAddTodo = (newTodo: Todo) => {
         setTodos((currentTodos) => [newTodo, ...currentTodos]);
     };
 
@@ -72,45 +77,57 @@ export default function DashboardPage() {
 
     if (!isLoaded) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <Loader className="mx-auto mt-2 animate-spin" />
-            </div>
+            <LoadingState
+                label="Preparing your workspace..."
+                className="min-h-[60vh]"
+            />
         );
     }
 
     if (!userId) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-lg text-gray-600">
-                    Please sign in to view your todos
+            <div className="flex min-h-[60vh] items-center justify-center px-4">
+                <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+                    <p className="text-lg font-medium text-foreground">
+                        Please sign in to view your tasks
+                    </p>
+                    <Link href="/sign-in">
+                        <Button className="mt-4">Go to sign in</Button>
+                    </Link>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-slate-800 py-8 px-4">
-            <div className="max-w-2xl mx-auto">
-                <div className="mb-8">
-                    <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-                        My Todos
-                    </h1>
+        <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+            <PageHeader
+                badge={
+                    <Badge variant="secondary" className="gap-2">
+                        <ListTodo className="h-3.5 w-3.5" /> Today
+                    </Badge>
+                }
+                title="My focus list"
+                description="Keep your priorities clear, one task at a time."
+                action={
+                    <Button variant="secondary" size="sm" className="gap-2">
+                        Review plan
+                        <ArrowRight className="h-4 w-4" />
+                    </Button>
+                }
+            />
 
-                    <p className="text-gray-600 dark:text-gray-400">
-                        Stay organized and manage your tasks efficiently
-                    </p>
+            {error ? (
+                <div className="mt-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+                    {error}
                 </div>
+            ) : null}
 
-                {error && (
-                    <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-                        {error}
-                    </div>
-                )}
-
+            <div className="mt-8 space-y-6">
                 <TodoForm onAddTodo={handleAddTodo} />
 
                 {isLoading ? (
-                    <Loader className="mx-auto mt-2 animate-spin" />
+                    <LoadingState label="Loading tasks..." />
                 ) : (
                     <TodoList
                         todos={todos}
