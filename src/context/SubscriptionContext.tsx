@@ -1,6 +1,13 @@
 "use client";
-import { createContext, useContext, useEffect, useState } from "react";
+
 import { useAuth } from "@clerk/nextjs";
+import {
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useState,
+} from "react";
 
 type SubscriptionContextType = {
     isSubscribed: boolean;
@@ -22,8 +29,7 @@ export function SubscriptionProvider({
     const [isSubscribed, setIsSubscribed] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
-    const refreshSubscription = async () => {
-        // No user is signed in
+    const refreshSubscription = useCallback(async () => {
         if (!userId) {
             setIsSubscribed(false);
             setIsLoading(false);
@@ -34,7 +40,6 @@ export function SubscriptionProvider({
 
         try {
             const response = await fetch("/api/subscription");
-
             const data = await response.json();
 
             if (!response.ok) {
@@ -43,17 +48,61 @@ export function SubscriptionProvider({
                 );
             }
 
-            setIsSubscribed(data.isSubscribed);
+            setIsSubscribed(Boolean(data.isSubscribed));
         } catch (error) {
             console.error("Subscription status error:", error);
             setIsSubscribed(false);
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [userId]);
 
     useEffect(() => {
-        refreshSubscription();
+        let isActive = true;
+
+        const loadSubscription = async () => {
+            if (!userId) {
+                if (isActive) {
+                    setIsSubscribed(false);
+                    setIsLoading(false);
+                }
+                return;
+            }
+
+            if (isActive) {
+                setIsLoading(true);
+            }
+
+            try {
+                const response = await fetch("/api/subscription");
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.error || "Failed to fetch subscription status",
+                    );
+                }
+
+                if (isActive) {
+                    setIsSubscribed(Boolean(data.isSubscribed));
+                }
+            } catch (error) {
+                console.error("Subscription status error:", error);
+                if (isActive) {
+                    setIsSubscribed(false);
+                }
+            } finally {
+                if (isActive) {
+                    setIsLoading(false);
+                }
+            }
+        };
+
+        void loadSubscription();
+
+        return () => {
+            isActive = false;
+        };
     }, [userId]);
 
     return (
