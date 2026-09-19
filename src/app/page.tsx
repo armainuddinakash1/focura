@@ -1,11 +1,34 @@
 "use client";
 
 import { useAuth } from "@clerk/nextjs";
+import { CheckCircle2, ShieldCheck, Zap } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { CheckCircle, Zap, Shield } from "lucide-react";
-import Link from "next/link";
+
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+
+const featureCards = [
+    {
+        title: "Clear priorities",
+        description:
+            "Capture ideas, define your next action, and focus on the work that moves the needle.",
+        icon: CheckCircle2,
+    },
+    {
+        title: "Fast workflows",
+        description:
+            "A frictionless task experience keeps you moving without extra ceremony or clutter.",
+        icon: Zap,
+    },
+    {
+        title: "Private by default",
+        description:
+            "Built with secure account flows and a calm interface designed for consistent momentum.",
+        icon: ShieldCheck,
+    },
+];
 
 export default function Home() {
     const { isLoaded, userId } = useAuth();
@@ -19,71 +42,66 @@ export default function Home() {
 
     if (!isLoaded) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-lg text-gray-600">Loading...</div>
+            <div className="flex min-h-[60vh] items-center justify-center">
+                <p className="text-sm text-muted-foreground">Loading Focura…</p>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-linear-to-br from-gray-50 to-zinc-50 dark:from-gray-900 dark:to-gray-800">
-            {/* Hero Section */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-                <div className="text-center">
-                    <h2 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
-                        Organize Your Tasks
-                        <br />
-                        <span className="text-gray-900 dark:text-white">
-                            Effortlessly
+        <div className="min-h-screen">
+            <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+                <div className="mx-auto max-w-3xl text-center">
+                    <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Built for focus and momentum
+                    </div>
+                    <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl md:text-6xl">
+                        Focus on what
+                        <span className="block text-primary">
+                            matters most.
                         </span>
-                    </h2>
-                    <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
-                        A modern, fast, and secure todo application to help you
-                        stay productive and keep track of what matters most.
+                    </h1>
+                    <p className="mx-auto mt-6 max-w-2xl text-base text-muted-foreground sm:text-lg">
+                        Focura helps you organize life’s important tasks with a
+                        calm, productive workspace built to reduce overwhelm and
+                        help you move forward.
                     </p>
-                    <Link href="/sign-up">
-                        <Button className="p-8 text-2xl">
-                            Start Free Today
-                        </Button>
-                    </Link>
-                </div>
-
-                {/* Features */}
-                <div className="mt-20 grid md:grid-cols-3 gap-8">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
-                        <CheckCircle className="w-12 h-12 text-gray-900 dark:text-white mb-4" />
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-                            Easy Management
-                        </h3>
-                        <p className="text-gray-600 dark:text-gray-400">
-                            Create, edit, and delete todos with just a few
-                            clicks. Stay in control of your tasks.
-                        </p>
-                    </div>
-
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
-                        <Zap className="w-12 h-12 text-gray-900 dark:text-white mb-4" />
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-                            Lightning Fast
-                        </h3>
-                        <p className="text-gray-600 dark:text-gray-400">
-                            Built with Next.js and modern technologies for
-                            blazing-fast performance.
-                        </p>
-                    </div>
-
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
-                        <Shield className="w-12 h-12 text-gray-900 dark:text-white mb-4" />
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-                            Secure & Private
-                        </h3>
-                        <p className="text-gray-600 dark:text-gray-400">
-                            Your data is protected with enterprise-grade
-                            security and Clerk authentication.
-                        </p>
+                    <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                        <Link href="/sign-up">
+                            <Button size="lg">Start free</Button>
+                        </Link>
+                        <Link href="/sign-in">
+                            <Button variant="outline" size="lg">
+                                Sign in
+                            </Button>
+                        </Link>
                     </div>
                 </div>
-            </div>
+
+                <div className="mt-16 grid gap-6 md:grid-cols-3">
+                    {featureCards.map(({ title, description, icon: Icon }) => (
+                        <Card
+                            key={title}
+                            className="h-full border-border/80 bg-card/70 backdrop-blur-sm"
+                        >
+                            <CardContent className="flex h-full flex-col gap-4 p-6">
+                                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                    <Icon className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-semibold text-foreground">
+                                        {title}
+                                    </h2>
+                                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                        {description}
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            </section>
         </div>
     );
 }
