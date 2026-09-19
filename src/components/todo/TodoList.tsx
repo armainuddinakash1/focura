@@ -1,5 +1,8 @@
 "use client";
 
+import { EmptyState } from "@/components/shared/empty-state";
+import { Button } from "@/components/ui/button";
+
 import TodoItem from "./TodoItem";
 
 interface Todo {
@@ -24,11 +27,15 @@ export default function TodoList({
 }: TodoListProps) {
     if (todos.length === 0) {
         return (
-            <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-lg shadow-md">
-                <p className="text-gray-600 dark:text-gray-400 text-lg">
-                    No todos yet. Create one to get started!
-                </p>
-            </div>
+            <EmptyState
+                title="No tasks yet"
+                description="Create your first task to build momentum and get organized."
+                action={
+                    <Button variant="outline" size="sm">
+                        Add a task
+                    </Button>
+                }
+            />
         );
     }
 

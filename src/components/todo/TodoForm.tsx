@@ -1,6 +1,12 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { FormEvent, useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface Todo {
     id: string;
@@ -36,9 +42,7 @@ export default function TodoForm({ onAddTodo }: TodoFormProps) {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({
-                    title: title.trim(),
-                }),
+                body: JSON.stringify({ title: title.trim() }),
             });
 
             const data = await response.json();
@@ -51,9 +55,7 @@ export default function TodoForm({ onAddTodo }: TodoFormProps) {
             setTitle("");
         } catch (err) {
             setError(
-                err instanceof Error
-                    ? err.message
-                    : "Something went wrong",
+                err instanceof Error ? err.message : "Something went wrong",
             );
         } finally {
             setIsLoading(false);
@@ -61,42 +63,37 @@ export default function TodoForm({ onAddTodo }: TodoFormProps) {
     };
 
     return (
-        <form
-            onSubmit={handleSubmit}
-            className="mb-8 rounded-lg bg-white p-6 shadow-md dark:bg-slate-800"
-        >
-            <div className="mb-4">
-                <label
-                    htmlFor="title"
-                    className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                >
-                    Task Title *
-                </label>
+        <Card className="border-border/80 bg-card/80 backdrop-blur-sm">
+            <CardContent className="p-5 sm:p-6">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="title">Task title</Label>
+                        <Input
+                            id="title"
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="What needs attention today?"
+                            disabled={isLoading}
+                        />
+                    </div>
 
-                <input
-                    id="title"
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="What needs to be done?"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-                    disabled={isLoading}
-                />
-            </div>
+                    {error ? (
+                        <p className="text-sm text-destructive" role="alert">
+                            {error}
+                        </p>
+                    ) : null}
 
-            {error && (
-                <div className="mb-4 text-sm text-red-600 dark:text-red-400">
-                    {error}
-                </div>
-            )}
-
-            <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-gray-400"
-            >
-                {isLoading ? "Adding..." : "Add Todo"}
-            </button>
-        </form>
+                    <Button
+                        type="submit"
+                        className="w-full gap-2"
+                        disabled={isLoading}
+                    >
+                        <Plus className="h-4 w-4" />
+                        {isLoading ? "Adding task..." : "Add task"}
+                    </Button>
+                </form>
+            </CardContent>
+        </Card>
     );
 }
