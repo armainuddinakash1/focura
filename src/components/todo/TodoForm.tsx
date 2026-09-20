@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,11 +25,22 @@ export default function TodoForm({ onAddTodo }: TodoFormProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const inputRef = useRef<HTMLInputElement>(null);
+    const shouldFocusInput = useRef(false);
+
+    useEffect(() => {
+        if (!isLoading && shouldFocusInput.current) {
+            inputRef.current?.focus();
+            shouldFocusInput.current = false;
+        }
+    }, [isLoading]);
+
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         if (!title.trim()) {
             setError("Title is required");
+            inputRef.current?.focus();
             return;
         }
 
@@ -42,7 +53,9 @@ export default function TodoForm({ onAddTodo }: TodoFormProps) {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ title: title.trim() }),
+                body: JSON.stringify({
+                    title: title.trim(),
+                }),
             });
 
             const data = await response.json();
@@ -53,10 +66,16 @@ export default function TodoForm({ onAddTodo }: TodoFormProps) {
 
             onAddTodo(data);
             setTitle("");
+
+            shouldFocusInput.current = true;
         } catch (err) {
             setError(
-                err instanceof Error ? err.message : "Something went wrong",
+                err instanceof Error
+                    ? err.message
+                    : "Something went wrong",
             );
+
+            shouldFocusInput.current = true;
         } finally {
             setIsLoading(false);
         }
@@ -68,7 +87,9 @@ export default function TodoForm({ onAddTodo }: TodoFormProps) {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="title">Task title</Label>
+
                         <Input
+                            ref={inputRef}
                             id="title"
                             type="text"
                             value={title}
@@ -79,7 +100,10 @@ export default function TodoForm({ onAddTodo }: TodoFormProps) {
                     </div>
 
                     {error ? (
-                        <p className="text-sm text-destructive" role="alert">
+                        <p
+                            className="text-sm text-destructive"
+                            role="alert"
+                        >
                             {error}
                         </p>
                     ) : null}
