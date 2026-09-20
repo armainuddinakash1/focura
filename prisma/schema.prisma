@@ -15,7 +15,6 @@ model User {
   lastName        String?
   isSubscribed    Boolean   @default(false)
   subscriptionEnd DateTime?
-  deletedAt       DateTime?
   todos           Todo[]
 
   createdAt DateTime @default(now())
