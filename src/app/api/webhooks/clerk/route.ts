@@ -193,26 +193,25 @@ export async function POST(req: NextRequest) {
              */
             if (event.type === "user.deleted") {
                 const clerkUserId = event.data.id;
-
-                /*
-                 * Soft-delete instead of deleting the database row.
-                 *
-                 * This preserves:
-                 * - todos
-                 * - subscriptions
-                 * - historical relationships
-                 * - internal records
-                 */
-                await tx.user.updateMany({
+                const user = await tx.user.findUnique({
                     where: {
                         clerkId: clerkUserId,
-                        deletedAt: null,
-                    },
-
-                    data: {
-                        deletedAt: new Date(),
                     },
                 });
+
+                if (user) {
+                    await tx.todo.deleteMany({
+                        where: {
+                            userId: user.id,
+                        },
+                    });
+
+                    await tx.user.delete({
+                        where: {
+                            id: user.id,
+                        },
+                    });
+                }
             }
 
             /*
