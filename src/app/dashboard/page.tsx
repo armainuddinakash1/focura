@@ -35,14 +35,34 @@ export default function DashboardPage() {
                 setIsLoading(true);
                 setError(null);
 
-                const response = await fetch("/api/todo");
+                const maxAttempts = 5;
+                const retryDelay = 500;
 
-                if (!response.ok) {
+                for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                    const response = await fetch("/api/todo");
+
+                    if (response.ok) {
+                        const data: Todo[] = await response.json();
+                        setTodos(data);
+                        return;
+                    }
+
+                    /*
+                     * A newly created Clerk user may not yet exist
+                     * in our local database because the Clerk webhook
+                     * is asynchronous.
+                     *
+                     * Retry only for "User not found".
+                     */
+                    if (response.status === 404 && attempt < maxAttempts) {
+                        await new Promise((resolve) =>
+                            setTimeout(resolve, retryDelay),
+                        );
+                        continue;
+                    }
+
                     throw new Error("Failed to fetch todos");
                 }
-
-                const data: Todo[] = await response.json();
-                setTodos(data);
             } catch (err) {
                 setError(
                     err instanceof Error
