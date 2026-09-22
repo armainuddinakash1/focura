@@ -26,24 +26,45 @@ export default function TodoItem({ todo, onUpdate, onDelete }: TodoItemProps) {
     const [editTitle, setEditTitle] = useState(todo.title);
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleToggleComplete = async () => {
-        try {
-            setIsLoading(true);
-            const response = await fetch(`/api/todo/${todo.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ completed: !todo.completed }),
-            });
+const handleToggleComplete = async () => {
+    const previousCompleted = todo.completed;
+    const newCompleted = !previousCompleted;
 
-            if (!response.ok) throw new Error("Failed to update todo");
-            const updatedTodo = await response.json();
-            onUpdate(updatedTodo);
-        } catch (error) {
-            console.error("Error toggling todo:", error);
-        } finally {
-            setIsLoading(false);
+    // 1. Update UI immediately
+    onUpdate({
+        ...todo,
+        completed: newCompleted,
+    });
+
+    try {
+        setIsLoading(true);
+
+        // 2. Persist change in database
+        const response = await fetch(`/api/todo/${todo.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ completed: newCompleted }),
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to update todo");
         }
-    };
+
+        // 3. Optionally synchronize with server response
+        const updatedTodo = await response.json();
+        onUpdate(updatedTodo);
+    } catch (error) {
+        console.error("Error toggling todo:", error);
+
+        // 4. Revert UI if database update fails
+        onUpdate({
+            ...todo,
+            completed: previousCompleted,
+        });
+    } finally {
+        setIsLoading(false);
+    }
+};
 
     const handleSaveEdit = async () => {
         if (!editTitle.trim()) return;
