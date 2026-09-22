@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@clerk/nextjs";
-import { ArrowRight, ListTodo } from "lucide-react";
+import { ArrowRight, CheckCircle2, Circle, ListTodo } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -95,6 +95,19 @@ export default function DashboardPage() {
         );
     };
 
+    /*
+     * Dashboard statistics
+     */
+    const totalTasks = todos.length;
+    const completedTasks = todos.filter((todo) => todo.completed).length;
+    const pendingTasks = totalTasks - completedTasks;
+
+    const completedPercentage =
+        totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    const pendingPercentage =
+        totalTasks > 0 ? Math.round((pendingTasks / totalTasks) * 100) : 0;
+
     if (!isLoaded) {
         return (
             <LoadingState
@@ -111,6 +124,7 @@ export default function DashboardPage() {
                     <p className="text-lg font-medium text-foreground">
                         Please sign in to view your tasks
                     </p>
+
                     <Link href="/sign-in">
                         <Button className="mt-4">Go to sign in</Button>
                     </Link>
@@ -124,7 +138,8 @@ export default function DashboardPage() {
             <PageHeader
                 badge={
                     <Badge variant="secondary" className="gap-2">
-                        <ListTodo className="h-3.5 w-3.5" /> Today
+                        <ListTodo className="h-3.5 w-3.5" />
+                        Today
                     </Badge>
                 }
                 title="My focus list"
@@ -142,6 +157,107 @@ export default function DashboardPage() {
                     {error}
                 </div>
             ) : null}
+
+            {/* Task statistics */}
+            {!isLoading && (
+                <div className="mt-8 grid gap-4 sm:grid-cols-3">
+                    {/* Total */}
+                    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                        <div className="flex items-start justify-between">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                                <ListTodo className="h-5 w-5 text-primary" />
+                            </div>
+
+                            <Badge
+                                variant="secondary"
+                                className="text-xs font-medium"
+                            >
+                                All tasks
+                            </Badge>
+                        </div>
+
+                        <div className="mt-4">
+                            <p className="text-sm text-muted-foreground">
+                                Total Tasks
+                            </p>
+
+                            <p className="mt-1 text-3xl font-semibold tracking-tight">
+                                {totalTasks}
+                            </p>
+                        </div>
+
+                        <p className="mt-2 text-xs text-muted-foreground">
+                            {totalTasks === 0
+                                ? "No tasks yet"
+                                : "Tasks in your focus list"}
+                        </p>
+                    </div>
+
+                    {/* Completed */}
+                    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                        <div className="flex items-start justify-between">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10">
+                                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                            </div>
+
+                            <Badge
+                                variant="secondary"
+                                className="text-xs font-medium"
+                            >
+                                {completedPercentage}%
+                            </Badge>
+                        </div>
+
+                        <div className="mt-4">
+                            <p className="text-sm text-muted-foreground">
+                                Completed
+                            </p>
+
+                            <p className="mt-1 text-3xl font-semibold tracking-tight">
+                                {completedTasks}
+                            </p>
+                        </div>
+
+                        <p className="mt-2 text-xs text-muted-foreground">
+                            {completedTasks === 0
+                                ? "Nothing completed yet"
+                                : `${completedPercentage}% of all tasks`}
+                        </p>
+                    </div>
+
+                    {/* Pending */}
+                    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                        <div className="flex items-start justify-between">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10">
+                                <Circle className="h-5 w-5 text-amber-600" />
+                            </div>
+
+                            <Badge
+                                variant="secondary"
+                                className="text-xs font-medium"
+                            >
+                                {pendingPercentage}%
+                            </Badge>
+                        </div>
+
+                        <div className="mt-4">
+                            <p className="text-sm text-muted-foreground">
+                                Pending
+                            </p>
+
+                            <p className="mt-1 text-3xl font-semibold tracking-tight">
+                                {pendingTasks}
+                            </p>
+                        </div>
+
+                        <p className="mt-2 text-xs text-muted-foreground">
+                            {pendingTasks === 0
+                                ? "All tasks completed"
+                                : `${pendingPercentage}% still remaining`}
+                        </p>
+                    </div>
+                </div>
+            )}
 
             <div className="mt-8 space-y-6">
                 <TodoForm onAddTodo={handleAddTodo} />
