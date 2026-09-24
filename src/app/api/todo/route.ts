@@ -93,7 +93,7 @@ export async function POST(request: Request) {
         );
     }
 
-    // Free users can create a maximum of 3 todos
+    // Free users can create a maximum of 10 todos
     if (!user.isSubscribed) {
         const todoCount = await prisma.todo.count({
             where: {
@@ -101,10 +101,10 @@ export async function POST(request: Request) {
             },
         });
 
-        if (todoCount >= 3) {
+        if (todoCount >= 10) {
             return NextResponse.json(
                 {
-                    error: "Free users can only create up to 3 todos. Subscribe to create more.",
+                    error: "Free users can only create up to 10 todos. Subscribe to create more.",
                 },
                 { status: 403 },
             );
