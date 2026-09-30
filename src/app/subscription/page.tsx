@@ -5,41 +5,53 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useSubscription } from "@/context/SubscriptionContext";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const perks = ["Unlimited tasks", "Priority planning", "A calmer workflow"];
 
 function SubscriptionPage() {
-    const { isSubscribed, isLoading, refreshSubscription } = useSubscription();
-    const [actionLoading, setActionLoading] = useState(false);
-
-    const loading = isLoading || actionLoading;
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handleSubscription = async () => {
-        const newSubscriptionState = !isSubscribed;
+        setLoading(true);
+        setError(null);
 
         try {
-            setActionLoading(true);
+            const checkoutAttemptId = crypto.randomUUID();
 
-            const response = await fetch("/api/subscription", {
-                method: "PATCH",
+            const response = await fetch("/api/stripe/checkout", {
+                method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ isSubscribed: newSubscriptionState }),
+                body: JSON.stringify({
+                    checkoutAttemptId,
+                }),
             });
 
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || "Failed to update subscription");
+                throw new Error(
+                    data.error || "Failed to create checkout session",
+                );
             }
 
-            await refreshSubscription();
+            if (!data.url) {
+                throw new Error("Checkout URL was not provided");
+            }
+
+            window.location.href = data.url;
         } catch (error) {
-            console.error("Subscription error:", error);
+            setError(
+                error instanceof Error
+                    ? error.message
+                    : "Something went wrong please try again",
+            );
         } finally {
-            setActionLoading(false);
+            setLoading(false);
         }
     };
 
@@ -55,9 +67,7 @@ function SubscriptionPage() {
                             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
                                 {loading
                                     ? "Loading..."
-                                    : isSubscribed
-                                      ? "Premium plan active"
-                                      : "Upgrade for more focus"}
+                                    : "Upgrade for more focus"}
                             </h1>
                         </div>
                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -83,17 +93,20 @@ function SubscriptionPage() {
                             </div>
                         ))}
                     </div>
+                    {error && (
+                        <Alert variant="destructive" className="mt-10">
+                            <AlertCircle className="size-4" />
+                            <AlertTitle>Payment failed</AlertTitle>
+                            <AlertDescription>{error}</AlertDescription>
+                        </Alert>
+                    )}
 
                     <Button
                         className="mt-8 w-full sm:w-auto"
                         onClick={handleSubscription}
                         disabled={loading}
                     >
-                        {loading
-                            ? "Working..."
-                            : isSubscribed
-                              ? "Switch to free plan"
-                              : "Upgrade now"}
+                        {loading ? "Working..." : "Upgrade now"}
                     </Button>
                 </CardContent>
             </Card>
