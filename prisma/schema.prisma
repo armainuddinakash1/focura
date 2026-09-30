@@ -7,15 +7,31 @@ datasource db {
   provider = "postgresql"
 }
 
+enum SubscriptionStatus {
+  INCOMPLETE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  INCOMPLETE_EXPIRED
+}
+
 model User {
-  id              String    @id @default(cuid())
-  clerkId         String    @unique
-  email           String    @unique
-  firstName       String?
-  lastName        String?
-  isSubscribed    Boolean   @default(false)
+  id      String @id @default(cuid())
+  clerkId String @unique
+
+  email     String  @unique
+  firstName String?
+  lastName  String?
+
+  subscriptionStatus SubscriptionStatus?
   subscriptionEnd DateTime?
-  todos           Todo[]
+
+  stripeCustomerId     String? @unique
+  stripeSubscriptionId String? @unique
+
+  todos Todo[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
