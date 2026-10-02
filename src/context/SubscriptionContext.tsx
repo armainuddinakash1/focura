@@ -9,8 +9,22 @@ import {
     useState,
 } from "react";
 
+type SubscriptionStatus =
+    | "ACTIVE"
+    | "TRIALING"
+    | "PAST_DUE"
+    | "CANCELED"
+    | "UNPAID"
+    | "INCOMPLETE"
+    | "INCOMPLETE_EXPIRED"
+    | "PAUSED"
+    | null;
+
 type SubscriptionContextType = {
-    isSubscribed: boolean;
+    hasPremiumAccess: boolean;
+    subscriptionStatus: SubscriptionStatus;
+    subscriptionEnd: string | null;
+    subscriptionMessage: string;
     isLoading: boolean;
     refreshSubscription: () => Promise<void>;
 };
@@ -26,12 +40,25 @@ export function SubscriptionProvider({
 }) {
     const { userId } = useAuth();
 
-    const [isSubscribed, setIsSubscribed] = useState(false);
+    const [hasPremiumAccess, setHasPremiumAccess] = useState(false);
+    const [subscriptionStatus, setSubscriptionStatus] =
+        useState<SubscriptionStatus>(null);
+    const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
+    const [subscriptionMessage, setSubscriptionMessage] = useState(
+        "You don't have an active subscription.",
+    );
     const [isLoading, setIsLoading] = useState(false);
+
+    const resetSubscription = useCallback(() => {
+        setHasPremiumAccess(false);
+        setSubscriptionStatus(null);
+        setSubscriptionEnd(null);
+        setSubscriptionMessage("You don't have an active subscription.");
+    }, []);
 
     const refreshSubscription = useCallback(async () => {
         if (!userId) {
-            setIsSubscribed(false);
+            resetSubscription();
             setIsLoading(false);
             return;
         }
@@ -40,6 +67,7 @@ export function SubscriptionProvider({
 
         try {
             const response = await fetch("/api/subscription");
+
             const data = await response.json();
 
             if (!response.ok) {
@@ -48,67 +76,37 @@ export function SubscriptionProvider({
                 );
             }
 
-            setIsSubscribed(Boolean(data.isSubscribed));
+            setHasPremiumAccess(
+                Boolean(data.subscriptionAccess?.hasPremiumAccess),
+            );
+
+            setSubscriptionStatus(data.subscriptionStatus ?? null);
+
+            setSubscriptionEnd(data.subscribtionEnd ?? null);
+
+            setSubscriptionMessage(
+                data.subscriptionAccess?.message ??
+                    "You don't have an active subscription.",
+            );
         } catch (error) {
             console.error("Subscription status error:", error);
-            setIsSubscribed(false);
+            resetSubscription();
         } finally {
             setIsLoading(false);
         }
-    }, [userId]);
+    }, [userId, resetSubscription]);
 
     useEffect(() => {
-        let isActive = true;
-
-        const loadSubscription = async () => {
-            if (!userId) {
-                if (isActive) {
-                    setIsSubscribed(false);
-                    setIsLoading(false);
-                }
-                return;
-            }
-
-            if (isActive) {
-                setIsLoading(true);
-            }
-
-            try {
-                const response = await fetch("/api/subscription");
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(
-                        data.error || "Failed to fetch subscription status",
-                    );
-                }
-
-                if (isActive) {
-                    setIsSubscribed(Boolean(data.isSubscribed));
-                }
-            } catch (error) {
-                console.error("Subscription status error:", error);
-                if (isActive) {
-                    setIsSubscribed(false);
-                }
-            } finally {
-                if (isActive) {
-                    setIsLoading(false);
-                }
-            }
-        };
-
-        void loadSubscription();
-
-        return () => {
-            isActive = false;
-        };
-    }, [userId]);
+        void refreshSubscription();
+    }, [refreshSubscription]);
 
     return (
         <SubscriptionContext.Provider
             value={{
-                isSubscribed,
+                hasPremiumAccess,
+                subscriptionStatus,
+                subscriptionEnd,
+                subscriptionMessage,
                 isLoading,
                 refreshSubscription,
             }}
