@@ -1,6 +1,5 @@
 import Stripe from "stripe";
-
-import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 
 function mapStripeStatus(status: Stripe.Subscription.Status) {
     switch (status) {
@@ -32,6 +31,7 @@ function mapStripeStatus(status: Stripe.Subscription.Status) {
 
 export async function syncStripeSubscription(
     subscription: Stripe.Subscription,
+    db: Prisma.TransactionClient,
 ) {
     const customerId =
         typeof subscription.customer === "string"
@@ -40,7 +40,7 @@ export async function syncStripeSubscription(
 
     const status = mapStripeStatus(subscription.status);
 
-    await prisma.user.updateMany({
+    await db.user.updateMany({
         where: {
             stripeCustomerId: customerId,
         },
