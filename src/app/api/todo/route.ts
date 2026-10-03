@@ -94,7 +94,11 @@ export async function POST(request: Request) {
     }
 
     // Free users can create a maximum of 10 todos
-    if (!user.isSubscribed) {
+    const hasPremiumAccess =
+        user.subscriptionStatus === "ACTIVE" ||
+        user.subscriptionStatus === "TRIALING";
+    
+    if (!hasPremiumAccess) {
         const todoCount = await prisma.todo.count({
             where: {
                 userId: user.id,
