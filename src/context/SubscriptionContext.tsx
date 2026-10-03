@@ -82,7 +82,7 @@ export function SubscriptionProvider({
 
             setSubscriptionStatus(data.subscriptionStatus ?? null);
 
-            setSubscriptionEnd(data.subscribtionEnd ?? null);
+            setSubscriptionEnd(data.subscriptionEnd ?? null);
 
             setSubscriptionMessage(
                 data.subscriptionAccess?.message ??
