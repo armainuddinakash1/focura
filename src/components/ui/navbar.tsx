@@ -4,7 +4,6 @@ import { Show, UserButton } from "@clerk/nextjs";
 import { Menu, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
 import { appNavigation } from "@/config/navigation";
 import { useSubscription } from "@/context/SubscriptionContext";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 function Navbar() {
     const pathname = usePathname();
-    const { isSubscribed, isLoading } = useSubscription();
+    const { isLoading, hasPremiumAccess } = useSubscription();
 
     return (
         <header className="sticky top-0 z-20 border-b border-border/80 bg-background/80 backdrop-blur-xl">
@@ -80,13 +79,15 @@ function Navbar() {
                             className="hidden sm:inline-flex"
                         >
                             <Button
-                                variant={isSubscribed ? "secondary" : "default"}
+                                variant={
+                                    hasPremiumAccess ? "secondary" : "default"
+                                }
                                 size="sm"
                                 className="gap-2"
                             >
                                 {isLoading
                                     ? "Loading..."
-                                    : isSubscribed
+                                    : hasPremiumAccess
                                       ? "Premium"
                                       : "Upgrade"}
                             </Button>
