@@ -126,6 +126,12 @@ export async function POST() {
                 cancel_url:
                     `${process.env.NEXT_PUBLIC_APP_URL}` +
                     "/subscription?checkout=canceled",
+                custom_text: {
+                    submit: {
+                        message:
+                            "TEST MODE — No real payment will be charged. Use 4242 4242 4242 4242, any future expiry date (e.g. 12/30), and any 3-digit CVV (e.g. 789).",
+                    },
+                },
                 metadata: {
                     userId: user.id,
                 },
