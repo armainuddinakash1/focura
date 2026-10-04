@@ -5,7 +5,7 @@ import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 
-export async function POST() {
+export async function POST(request: Request) {
     try {
         const { userId } = await auth();
 
@@ -13,6 +13,16 @@ export async function POST() {
             return NextResponse.json(
                 { error: "Unauthorized" },
                 { status: 401 },
+            );
+        }
+
+        const body = await request.json();
+        const { checkoutAttemptId } = body;
+
+        if (!checkoutAttemptId || typeof checkoutAttemptId !== "string") {
+            return NextResponse.json(
+                { error: "Missing checkout attempt ID" },
+                { status: 400 },
             );
         }
 
@@ -32,7 +42,10 @@ export async function POST() {
         let customerId = user.stripeCustomerId;
 
         /*
-         * 1. Verify an existing Stripe Customer.
+         * 1. Verify the existing Stripe Customer.
+         *
+         * The database may contain a Stripe Customer ID that no longer
+         * exists, for example if the Customer was deleted from Stripe.
          */
         if (customerId) {
             try {
@@ -54,8 +67,8 @@ export async function POST() {
         }
 
         /*
-         * 2. Create a new Customer if the stored one
-         *    doesn't exist anymore.
+         * 2. Create a new Stripe Customer if the stored
+         *    Customer ID is missing or invalid.
          */
         if (!customerId) {
             const customer = await stripe.customers.create({
@@ -80,8 +93,12 @@ export async function POST() {
         }
 
         /*
-         * 3. Ask Stripe whether this customer already
-         *    has a subscription.
+         * 3. Ask Stripe whether this Customer already has
+         *    a subscription.
+         *
+         * Do not rely on the local subscription fields here.
+         * Stripe is the source of truth for whether a subscription
+         * currently exists.
          */
         const subscriptions = await stripe.subscriptions.list({
             customer: customerId,
@@ -110,31 +127,39 @@ export async function POST() {
         const session = await stripe.checkout.sessions.create(
             {
                 mode: "subscription",
+
                 managed_payments: {
                     enabled: false,
                 },
+
                 customer: customerId,
+
                 line_items: [
                     {
                         price: process.env.STRIPE_PRICE_ID!,
                         quantity: 1,
                     },
                 ],
+
                 success_url:
                     `${process.env.NEXT_PUBLIC_APP_URL}` +
                     "/dashboard?checkout=success",
+
                 cancel_url:
                     `${process.env.NEXT_PUBLIC_APP_URL}` +
                     "/subscription?checkout=canceled",
+
                 custom_text: {
                     submit: {
                         message:
                             "TEST MODE — No real payment will be charged. Use 4242 4242 4242 4242, any future expiry date (e.g. 12/30), and any 3-digit CVV (e.g. 789).",
                     },
                 },
+
                 metadata: {
                     userId: user.id,
                 },
+
                 subscription_data: {
                     metadata: {
                         userId: user.id,
@@ -142,23 +167,11 @@ export async function POST() {
                 },
             },
             {
-                idempotencyKey: `checkout_${userId}_${Date.now()}`,
                 /*
-              For **idempotency**, don't use `Date.now()` if your goal is retry safety.
-
-              A retry with `Date.now()` creates a different key.
-
-              Instead, the frontend should generate/request a stable checkout attempt ID, or you can use a unique server-side operation ID.
-
-              For example:
-
-              ```tsx
-              const idempotencyKey = `checkout_${user.id}_${checkoutAttemptId}`;
-              ```
-
-              Stripe supports idempotency keys specifically to make retrying API requests safer.
-              For a portfolio project, Date.now() is enough
-              */
+                 * Use the stable checkout attempt ID rather than
+                 * Date.now() so the same attempt can safely be retried.
+                 */
+                idempotencyKey: `checkout_${user.id}_${checkoutAttemptId}`,
             },
         );
 
