@@ -11,6 +11,10 @@ import Image from "next/image";
 
 const perks = ["Unlimited tasks", "Priority planning", "A calmer workflow"];
 
+type User = {
+    stripeCustomerId: string | null;
+};
+
 function SubscriptionPage() {
     const {
         hasPremiumAccess,
@@ -21,14 +25,45 @@ function SubscriptionPage() {
         refreshSubscription,
     } = useSubscription();
 
+    const [user, setUser] = useState<User | null>(null);
+    const [userLoading, setUserLoading] = useState(true);
+
     const [checkoutLoading, setCheckoutLoading] = useState(false);
+    const [portalLoading, setPortalLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     /*
+     * Fetch the local user so we can determine whether a
+     * Stripe Customer already exists.
+     */
+    useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                const response = await fetch("/api/user");
+
+                if (!response.ok) {
+                    throw new Error("Failed to fetch user");
+                }
+
+                const data = await response.json();
+
+                setUser(data.user);
+            } catch (error) {
+                setError(
+                    error instanceof Error
+                        ? error.message
+                        : "Failed to load user information.",
+                );
+            } finally {
+                setUserLoading(false);
+            }
+        };
+
+        void fetchUser();
+    }, []);
+
+    /*
      * Refresh subscription when the user returns from Stripe Checkout.
-     *
-     * The webhook should update the database first, then this request
-     * reads the latest subscription state from your database.
      */
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -37,14 +72,12 @@ function SubscriptionPage() {
         if (checkout === "success") {
             void refreshSubscription();
 
-            // Remove the checkout query parameter from the URL.
             window.history.replaceState({}, "", window.location.pathname);
         }
 
         if (checkout === "canceled") {
             setError("Checkout was canceled.");
 
-            // Remove the checkout query parameter from the URL.
             window.history.replaceState({}, "", window.location.pathname);
         }
     }, [refreshSubscription]);
@@ -94,7 +127,45 @@ function SubscriptionPage() {
         }
     };
 
-    const loading = subscriptionLoading || checkoutLoading;
+    const handleManageSubscription = async () => {
+        if (!user?.stripeCustomerId || portalLoading) {
+            return;
+        }
+
+        setPortalLoading(true);
+        setError(null);
+
+        try {
+            const response = await fetch("/api/stripe/portal", {
+                method: "POST",
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.error || "Failed to open subscription management",
+                );
+            }
+
+            if (!data.url) {
+                throw new Error("Customer Portal URL was not provided");
+            }
+
+            window.location.href = data.url;
+        } catch (error) {
+            setError(
+                error instanceof Error
+                    ? error.message
+                    : "Something went wrong. Please try again.",
+            );
+
+            setPortalLoading(false);
+        }
+    };
+
+    const loading =
+        subscriptionLoading || userLoading || checkoutLoading || portalLoading;
 
     return (
         <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
@@ -184,7 +255,7 @@ function SubscriptionPage() {
                         <Alert variant="destructive" className="mt-8">
                             <AlertCircle className="size-4" />
 
-                            <AlertTitle>Checkout error</AlertTitle>
+                            <AlertTitle>Something went wrong</AlertTitle>
 
                             <AlertDescription>{error}</AlertDescription>
                         </Alert>
@@ -201,6 +272,7 @@ function SubscriptionPage() {
                                     height={1254}
                                 />
                             </AspectRatio>
+
                             <Button
                                 className="mt-8 w-full sm:w-auto"
                                 onClick={handleSubscription}
@@ -213,10 +285,16 @@ function SubscriptionPage() {
                         </>
                     )}
 
-                    {hasPremiumAccess && (
-                        <p className="mt-8 text-sm text-muted-foreground">
-                            You already have access to Focura Plus.
-                        </p>
+                    {hasPremiumAccess && user?.stripeCustomerId && (
+                        <Button
+                            className="mt-8 w-full sm:w-auto"
+                            onClick={handleManageSubscription}
+                            disabled={loading}
+                        >
+                            {portalLoading
+                                ? "Opening..."
+                                : "Manage subscription"}
+                        </Button>
                     )}
                 </CardContent>
             </Card>
