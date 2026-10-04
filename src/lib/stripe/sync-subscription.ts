@@ -40,6 +40,8 @@ export async function syncStripeSubscription(
 
     const status = mapStripeStatus(subscription.status);
 
+    const currentPeriodEnd = subscription.items.data[0]?.current_period_end;
+
     await db.user.updateMany({
         where: {
             stripeCustomerId: customerId,
@@ -50,6 +52,7 @@ export async function syncStripeSubscription(
             subscriptionEnd: new Date(
                 subscription.items.data[0].current_period_end * 1000,
             ),
+            cancelAtPeriodEnd: subscription.cancel_at_period_end,
         },
     });
 }
