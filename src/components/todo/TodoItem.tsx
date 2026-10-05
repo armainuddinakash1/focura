@@ -2,10 +2,19 @@
 
 import { Check, PencilLine, Trash2 } from "lucide-react";
 import { useState } from "react";
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Todo {
     id: string;
@@ -26,45 +35,45 @@ export default function TodoItem({ todo, onUpdate, onDelete }: TodoItemProps) {
     const [editTitle, setEditTitle] = useState(todo.title);
     const [isLoading, setIsLoading] = useState(false);
 
-const handleToggleComplete = async () => {
-    const previousCompleted = todo.completed;
-    const newCompleted = !previousCompleted;
+    const handleToggleComplete = async () => {
+        const previousCompleted = todo.completed;
+        const newCompleted = !previousCompleted;
 
-    // 1. Update UI immediately
-    onUpdate({
-        ...todo,
-        completed: newCompleted,
-    });
-
-    try {
-        setIsLoading(true);
-
-        // 2. Persist change in database
-        const response = await fetch(`/api/todo/${todo.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ completed: newCompleted }),
-        });
-
-        if (!response.ok) {
-            throw new Error("Failed to update todo");
-        }
-
-        // 3. Optionally synchronize with server response
-        const updatedTodo = await response.json();
-        onUpdate(updatedTodo);
-    } catch (error) {
-        console.error("Error toggling todo:", error);
-
-        // 4. Revert UI if database update fails
+        // 1. Update UI immediately
         onUpdate({
             ...todo,
-            completed: previousCompleted,
+            completed: newCompleted,
         });
-    } finally {
-        setIsLoading(false);
-    }
-};
+
+        try {
+            setIsLoading(true);
+
+            // 2. Persist change in database
+            const response = await fetch(`/api/todo/${todo.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ completed: newCompleted }),
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to update todo");
+            }
+
+            // 3. Optionally synchronize with server response
+            const updatedTodo = await response.json();
+            onUpdate(updatedTodo);
+        } catch (error) {
+            console.error("Error toggling todo:", error);
+
+            // 4. Revert UI if database update fails
+            onUpdate({
+                ...todo,
+                completed: previousCompleted,
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const handleSaveEdit = async () => {
         if (!editTitle.trim()) return;
@@ -89,8 +98,6 @@ const handleToggleComplete = async () => {
     };
 
     const handleDelete = async () => {
-        if (!confirm("Are you sure you want to delete this todo?")) return;
-
         try {
             setIsLoading(true);
             const response = await fetch(`/api/todo/${todo.id}`, {
@@ -189,17 +196,58 @@ const handleToggleComplete = async () => {
                             >
                                 <PencilLine className="h-4 w-4" />
                             </Button>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={handleDelete}
-                                disabled={isLoading}
-                                aria-label="Delete task"
-                                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                            >
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <AlertDialog>
+                                <AlertDialogTrigger
+                                    render={
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            disabled={isLoading}
+                                            aria-label="Delete task"
+                                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    }
+                                ></AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>
+                                            Are you sure you want to delete this
+                                            todo?
+                                        </AlertDialogTitle>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        {isLoading ? (
+                                            <>
+                                                <AlertDialogCancel
+                                                    disabled={true}
+                                                >
+                                                    Cancel
+                                                </AlertDialogCancel>
+                                                <AlertDialogAction
+                                                    disabled={true}
+                                                    onClick={handleDelete}
+                                                >
+                                                    Deleting...
+                                                </AlertDialogAction>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <AlertDialogCancel>
+                                                    Cancel
+                                                </AlertDialogCancel>
+                                                <AlertDialogAction
+                                                    onClick={handleDelete}
+                                                >
+                                                    Continue
+                                                </AlertDialogAction>
+                                            </>
+                                        )}
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         </div>
                     </div>
                 )}
