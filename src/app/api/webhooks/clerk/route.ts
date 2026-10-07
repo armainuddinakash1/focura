@@ -1,13 +1,12 @@
 import { verifyWebhook } from "@clerk/nextjs/webhooks";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { stripe } from "@/lib/stripe";
+import Stripe from "stripe";
 
 export async function POST(req: NextRequest) {
     /*
      * 1. Verify the Clerk webhook signature.
-     *
-     * verifyWebhook() reads CLERK_WEBHOOK_SIGNING_SECRET
-     * from the environment automatically.
      */
     let event;
 
@@ -23,9 +22,6 @@ export async function POST(req: NextRequest) {
 
     /*
      * 2. Get the unique webhook delivery ID.
-     *
-     * Clerk uses this ID for the individual webhook delivery.
-     * We store it so retries/duplicate deliveries are idempotent.
      */
     const webhookId = req.headers.get("svix-id");
 
@@ -53,10 +49,8 @@ export async function POST(req: NextRequest) {
 
     try {
         /*
-         * 4. Atomically register the webhook.
-         *
-         * If this ID already exists, this delivery has already
-         * been processed successfully.
+         * 4. Check whether this webhook delivery has already
+         * been successfully processed.
          */
         const existingWebhook = await prisma.processedWebhook.findUnique({
             where: {
@@ -72,46 +66,124 @@ export async function POST(req: NextRequest) {
         }
 
         /*
-         * 5. Process the event and record the webhook in the
-         * same database transaction.
+         * USER DELETED
          *
-         * This is important:
-         *
-         * User update succeeds
-         *       +
-         * ProcessedWebhook insert succeeds
-         *       = transaction commits
-         *
-         * If anything fails, the entire transaction rolls back,
-         * allowing Clerk to retry the webhook.
+         * Stripe operations are intentionally performed BEFORE
+         * the Prisma transaction because Stripe is an external
+         * system and cannot participate in the Prisma transaction.
          */
-        await prisma.$transaction(async (tx) => {
+        if (event.type === "user.deleted") {
+            const clerkUserId = event.data.id;
+
+            const user = await prisma.user.findUnique({
+                where: {
+                    clerkId: clerkUserId,
+                },
+                select: {
+                    id: true,
+                    stripeCustomerId: true,
+                },
+            });
+
+            if (user?.stripeCustomerId) {
+                /*
+                 * Find all subscriptions belonging to the customer.
+                 *
+                 * We check all statuses because a customer may have
+                 * an active, trialing, past_due, unpaid, or incomplete
+                 * subscription when the account is deleted.
+                 */
+                const subscriptions = await stripe.subscriptions.list({
+                    customer: user.stripeCustomerId,
+                    status: "all",
+                });
+
+                /*
+                 * Cancel subscriptions that should not remain active
+                 * after the Focura account has been deleted.
+                 */
+                for (const subscription of subscriptions.data) {
+                    if (
+                        [
+                            "active",
+                            "trialing",
+                            "past_due",
+                            "unpaid",
+                            "incomplete",
+                        ].includes(subscription.status)
+                    ) {
+                        await stripe.subscriptions.cancel(subscription.id);
+                    }
+                }
+
+                /*
+                 * Now delete the Stripe Customer.
+                 *
+                 * Stripe will retain whatever records Stripe is
+                 * required to retain, but the Customer object itself
+                 * is removed.
+                 */
+                try {
+                    await stripe.customers.del(user.stripeCustomerId);
+                } catch (error) {
+                    /*
+                     * If the customer was already deleted in Stripe,
+                     * treat that as success.
+                     */
+                    if (
+                        error instanceof Stripe.errors.StripeError &&
+                        error.code === "resource_missing"
+                    ) {
+                        console.log(
+                            `Stripe customer ${user.stripeCustomerId} was already deleted.`,
+                        );
+                    } else {
+                        throw error;
+                    }
+                }
+            }
+
+            /*
+             * Delete the local user and mark the webhook processed
+             * in the same Prisma transaction.
+             */
+            await prisma.$transaction(async (tx) => {
+                if (user) {
+                    await tx.todo.deleteMany({
+                        where: {
+                            userId: user.id,
+                        },
+                    });
+
+                    await tx.user.delete({
+                        where: {
+                            id: user.id,
+                        },
+                    });
+                }
+
+                await tx.processedWebhook.create({
+                    data: {
+                        webhookId,
+                    },
+                });
+            });
+        } else {
             /*
              * USER CREATED / UPDATED
              */
-            if (
-                event.type === "user.created" ||
-                event.type === "user.updated"
-            ) {
+            await prisma.$transaction(async (tx) => {
                 const clerkUserId = event.data.id;
 
                 /*
                  * Clerk provides primary_email_address_id.
                  *
-                 * Do NOT simply use email_addresses[0], because
-                 * the first email in the array is not guaranteed
-                 * to be the user's primary email.
+                 * Do NOT simply use email_addresses[0].
                  */
                 const primaryEmailAddress = event.data.email_addresses.find(
                     (email) => email.id === event.data.primary_email_address_id,
                 );
 
-                /*
-                 * Your Prisma schema requires email.
-                 *
-                 * Therefore, we cannot create/update the local
-                 * user without a primary email.
-                 */
                 if (!primaryEmailAddress) {
                     throw new Error(
                         `Clerk user ${clerkUserId} has no primary email address`,
@@ -122,8 +194,6 @@ export async function POST(req: NextRequest) {
 
                 /*
                  * 1. Try to find the user using the current Clerk ID.
-                 *
-                 * This is the normal path for user.updated.
                  */
                 const existingClerkUser = await tx.user.findUnique({
                     where: {
@@ -186,62 +256,27 @@ export async function POST(req: NextRequest) {
                         });
                     }
                 }
-            }
 
-            /*
-             * USER DELETED
-             */
-            if (event.type === "user.deleted") {
-                const clerkUserId = event.data.id;
-                const user = await tx.user.findUnique({
-                    where: {
-                        clerkId: clerkUserId,
+                /*
+                 * Mark this exact webhook delivery as processed.
+                 */
+                await tx.processedWebhook.create({
+                    data: {
+                        webhookId,
                     },
                 });
-
-                if (user) {
-                    await tx.todo.deleteMany({
-                        where: {
-                            userId: user.id,
-                        },
-                    });
-
-                    await tx.user.delete({
-                        where: {
-                            id: user.id,
-                        },
-                    });
-                }
-            }
-
-            /*
-             * 6. Mark this exact webhook delivery as processed.
-             *
-             * Because this happens inside the transaction, the
-             * webhook will only be marked processed if the actual
-             * user operation succeeded.
-             */
-            await tx.processedWebhook.create({
-                data: {
-                    webhookId,
-                },
             });
-        });
+        }
 
         /*
-         * 7. Tell Clerk the webhook was successfully processed.
+         * 5. Tell Clerk the webhook was successfully processed.
          */
         return NextResponse.json({
             received: true,
         });
     } catch (error) {
         /*
-         * IMPORTANT:
-         *
-         * We intentionally return 500 here.
-         *
-         * Clerk will retry failed webhook deliveries when your
-         * endpoint returns a 4xx/5xx response.
+         * Return 500 so Clerk retries the webhook.
          */
         console.error("Clerk webhook processing failed:", {
             webhookId,
