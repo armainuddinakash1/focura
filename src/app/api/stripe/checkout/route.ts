@@ -4,6 +4,7 @@ import Stripe from "stripe";
 
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
+import { addOneCalendarMonth } from "@/lib/add-one-calendar-month";
 
 export async function POST(request: Request) {
     try {
@@ -67,29 +68,68 @@ export async function POST(request: Request) {
         }
 
         /*
-         * 2. Create a new Stripe Customer if the stored
-         *    Customer ID is missing or invalid.
+         * 2. Create a Stripe Customer if the stored Customer ID
+         *    is missing or invalid.
+         *
+         * The Stripe idempotency key prevents repeated customer
+         * creation requests for the same local user from creating
+         * multiple Stripe Customers.
          */
         if (!customerId) {
-            const customer = await stripe.customers.create({
-                email: user.email,
-                name: [user.firstName, user.lastName].filter(Boolean).join(" "),
-                metadata: {
-                    userId: user.id,
-                    clerkId: user.clerkId,
+            const customer = await stripe.customers.create(
+                {
+                    email: user.email,
+                    name: [user.firstName, user.lastName]
+                        .filter(Boolean)
+                        .join(" "),
+                    metadata: {
+                        userId: user.id,
+                        clerkId: user.clerkId,
+                    },
                 },
-            });
+                {
+                    idempotencyKey: `customer_${user.id}`,
+                },
+            );
 
-            customerId = customer.id;
-
-            await prisma.user.update({
+            /*
+             * Only set stripeCustomerId if another concurrent request
+             * has not already set it.
+             *
+             * This prevents two concurrent requests from overwriting
+             * each other's Stripe Customer ID.
+             */
+            const result = await prisma.user.updateMany({
                 where: {
                     id: user.id,
+                    stripeCustomerId: null,
                 },
                 data: {
-                    stripeCustomerId: customerId,
+                    stripeCustomerId: customer.id,
                 },
             });
+
+            if (result.count === 1) {
+                /*
+                 * This request successfully stored the Stripe Customer.
+                 */
+                customerId = customer.id;
+            } else {
+                /*
+                 * Another concurrent request already stored the
+                 * Stripe Customer ID. Use the database value instead.
+                 */
+                const updatedUser = await prisma.user.findUniqueOrThrow({
+                    where: {
+                        id: user.id,
+                    },
+                    select: {
+                        stripeCustomerId: true,
+                    },
+                });
+
+                customerId = updatedUser.stripeCustomerId;
+            }
         }
 
         /*
@@ -100,8 +140,14 @@ export async function POST(request: Request) {
          * Stripe is the source of truth for whether a subscription
          * currently exists.
          */
+        let strCustomerId
+        if (customerId === null) {
+            strCustomerId = undefined;
+        } else {
+            strCustomerId = customerId
+        }
         const subscriptions = await stripe.subscriptions.list({
-            customer: customerId,
+            customer: strCustomerId,
             status: "all",
             limit: 100,
         });
@@ -124,6 +170,8 @@ export async function POST(request: Request) {
         /*
          * 4. Create Checkout Session.
          */
+        const trialEnd = addOneCalendarMonth(new Date());
+
         const session = await stripe.checkout.sessions.create(
             {
                 mode: "subscription",
@@ -132,7 +180,7 @@ export async function POST(request: Request) {
                     enabled: false,
                 },
 
-                customer: customerId,
+                customer: strCustomerId,
 
                 line_items: [
                     {
@@ -161,6 +209,7 @@ export async function POST(request: Request) {
                 },
 
                 subscription_data: {
+                    trial_end: Math.floor(trialEnd.getTime() / 1000),
                     metadata: {
                         userId: user.id,
                     },
