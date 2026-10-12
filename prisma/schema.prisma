@@ -15,6 +15,7 @@ enum SubscriptionStatus {
   CANCELED
   UNPAID
   INCOMPLETE_EXPIRED
+  PAUSED
 }
 
 model User {
