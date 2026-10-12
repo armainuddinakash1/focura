@@ -82,6 +82,12 @@ function SubscriptionPage() {
         }
     }, [refreshSubscription]);
 
+    /*
+     * Start a new subscription.
+     *
+     * This should only be used when the user does not have a
+     * subscription that needs to be managed.
+     */
     const handleSubscription = async () => {
         if (hasPremiumAccess || checkoutLoading) {
             return;
@@ -106,6 +112,21 @@ function SubscriptionPage() {
             const data = await response.json();
 
             if (!response.ok) {
+                if (data.code === "SUBSCRIPTION_EXISTS") {
+                    // Refresh subscription status and premium access.
+                    await refreshSubscription();
+
+                    // Refresh the local user data from Prisma.
+                    const userResponse = await fetch("/api/user", {
+                        cache: "no-store",
+                    });
+
+                    if (userResponse.ok) {
+                        const userData = await userResponse.json();
+                        setUser(userData.user);
+                    }
+                }
+
                 throw new Error(
                     data.error || "Failed to create checkout session",
                 );
@@ -122,11 +143,17 @@ function SubscriptionPage() {
                     ? error.message
                     : "Something went wrong. Please try again.",
             );
-
+        } finally {
             setCheckoutLoading(false);
         }
     };
 
+    /*
+     * Open Stripe Customer Portal.
+     *
+     * Used for active subscriptions as well as subscriptions
+     * that require billing attention.
+     */
     const handleManageSubscription = async () => {
         if (!user?.stripeCustomerId || portalLoading) {
             return;
@@ -159,10 +186,39 @@ function SubscriptionPage() {
                     ? error.message
                     : "Something went wrong. Please try again.",
             );
-
+        } finally {
             setPortalLoading(false);
         }
     };
+
+    /*
+     * Subscription status determines which action the user should see.
+     *
+     * null:
+     *   No subscription exists locally -> start Checkout.
+     *
+     * canceled / incomplete_expired:
+     *   The previous subscription is no longer active -> allow new Checkout.
+     *
+     * past_due / unpaid / incomplete / paused:
+     *   A subscription already exists -> send the user to Stripe Portal.
+     *
+     * active / trialing:
+     *   Premium access -> manage existing subscription.
+     */
+    const canStartNewSubscription =
+        subscriptionStatus === null ||
+        subscriptionStatus === "CANCELED" ||
+        subscriptionStatus === "INCOMPLETE_EXPIRED";
+
+    const needsBillingAction =
+        subscriptionStatus === "PAST_DUE" ||
+        subscriptionStatus === "UNPAID" ||
+        subscriptionStatus === "INCOMPLETE" ||
+        subscriptionStatus === "PAUSED";
+
+    const canManageSubscription =
+        !!user?.stripeCustomerId && (hasPremiumAccess || needsBillingAction);
 
     const loading =
         subscriptionLoading || userLoading || checkoutLoading || portalLoading;
@@ -182,7 +238,9 @@ function SubscriptionPage() {
                                     ? "Loading..."
                                     : hasPremiumAccess
                                       ? "You're already subscribed"
-                                      : "Upgrade for more focus"}
+                                      : needsBillingAction
+                                        ? "Your subscription needs attention"
+                                        : "Upgrade for more focus"}
                             </h1>
                         </div>
 
@@ -236,20 +294,25 @@ function SubscriptionPage() {
                         </Alert>
                     )}
 
-                    {!hasPremiumAccess &&
-                        subscriptionStatus !== null &&
-                        subscriptionStatus !== "ACTIVE" &&
-                        subscriptionStatus !== "TRIALING" && (
-                            <Alert variant="destructive" className="mt-8">
-                                <AlertCircle className="size-4" />
+                    {needsBillingAction && (
+                        <Alert variant="destructive" className="mt-8">
+                            <AlertCircle className="size-4" />
 
-                                <AlertTitle>Subscription status</AlertTitle>
+                            <AlertTitle>
+                                {subscriptionStatus === "PAST_DUE"
+                                    ? "Payment is past due"
+                                    : subscriptionStatus === "UNPAID"
+                                      ? "Subscription is unpaid"
+                                      : subscriptionStatus === "INCOMPLETE"
+                                        ? "Subscription setup is incomplete"
+                                        : "Subscription is paused"}
+                            </AlertTitle>
 
-                                <AlertDescription>
-                                    {subscriptionMessage}
-                                </AlertDescription>
-                            </Alert>
-                        )}
+                            <AlertDescription>
+                                {subscriptionMessage}
+                            </AlertDescription>
+                        </Alert>
+                    )}
 
                     {error && (
                         <Alert variant="destructive" className="mt-8">
@@ -261,7 +324,7 @@ function SubscriptionPage() {
                         </Alert>
                     )}
 
-                    {!hasPremiumAccess && subscriptionStatus === null && (
+                    {canStartNewSubscription && !loading && (
                         <>
                             <AspectRatio ratio={1 / 1}>
                                 <Image
@@ -285,7 +348,7 @@ function SubscriptionPage() {
                         </>
                     )}
 
-                    {hasPremiumAccess && user?.stripeCustomerId && (
+                    {canManageSubscription && (
                         <Button
                             className="mt-8 w-full sm:w-auto"
                             onClick={handleManageSubscription}
@@ -293,7 +356,9 @@ function SubscriptionPage() {
                         >
                             {portalLoading
                                 ? "Opening..."
-                                : "Manage subscription"}
+                                : needsBillingAction
+                                  ? "Fix billing"
+                                  : "Manage subscription"}
                         </Button>
                     )}
                 </CardContent>
