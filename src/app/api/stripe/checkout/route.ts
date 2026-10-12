@@ -6,6 +6,15 @@ import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { addOneCalendarMonth } from "@/lib/add-one-calendar-month";
 
+const SUBSCRIPTION_STATUSES_THAT_BLOCK_NEW_CHECKOUT = [
+    "active",
+    "trialing",
+    "past_due",
+    "unpaid",
+    "incomplete",
+    "paused",
+] as const;
+
 export async function POST(request: Request) {
     try {
         const { userId } = await auth();
@@ -54,6 +63,63 @@ export async function POST(request: Request) {
 
                 if (customer.deleted) {
                     customerId = null;
+                }
+
+                if (!customer.deleted) {
+                    const subscriptions = await stripe.subscriptions.list({
+                        customer: customer.id,
+                        status: "all",
+                        limit: 100,
+                    });
+
+                    const existingSubscription = subscriptions.data.find(
+                        (subscription) =>
+                            SUBSCRIPTION_STATUSES_THAT_BLOCK_NEW_CHECKOUT.includes(
+                                subscription.status as (typeof SUBSCRIPTION_STATUSES_THAT_BLOCK_NEW_CHECKOUT)[number],
+                            ),
+                    );
+
+                    if (existingSubscription) {
+                        await prisma.user.updateMany({
+                            where: {
+                                id: user.id,
+                                stripeCustomerId: customerId,
+                            },
+                            data: {
+                                subscriptionStatus:
+                                    existingSubscription.status.toUpperCase() as
+                                        | "INCOMPLETE"
+                                        | "TRIALING"
+                                        | "ACTIVE"
+                                        | "PAST_DUE"
+                                        | "CANCELED"
+                                        | "UNPAID"
+                                        | "INCOMPLETE_EXPIRED"
+                                        | "PAUSED",
+
+                                subscriptionEnd: new Date(
+                                    existingSubscription.items.data[0]!
+                                        .current_period_end * 1000,
+                                ),
+                                cancelAtPeriodEnd:
+                                    existingSubscription.cancel_at_period_end,
+                                stripeSubscriptionId: existingSubscription.id,
+                            },
+                        });
+                    } else {
+                        await prisma.user.updateMany({
+                            where: {
+                                id: user.id,
+                                stripeCustomerId: customerId,
+                            },
+                            data: {
+                                subscriptionStatus: null,
+                                subscriptionEnd: null,
+                                cancelAtPeriodEnd: false,
+                                stripeSubscriptionId: null,
+                            },
+                        });
+                    }
                 }
             } catch (error) {
                 if (
@@ -129,39 +195,59 @@ export async function POST(request: Request) {
                 });
 
                 customerId = updatedUser.stripeCustomerId;
+
+                if (!customerId) {
+                    throw new Error(
+                        "Stripe Customer ID could not be determined.",
+                    );
+                }
             }
         }
 
         /*
-         * 3. Ask Stripe whether this Customer already has
-         *    a subscription.
+         * 3. Ask Stripe whether this Customer already has a
+         *    subscription that prevents creating another one.
          *
-         * Do not rely on the local subscription fields here.
-         * Stripe is the source of truth for whether a subscription
-         * currently exists.
+         * Stripe is the source of truth here. Do not rely only
+         * on the local subscriptionStatus field.
          */
-        let strCustomerId
-        if (customerId === null) {
-            strCustomerId = undefined;
-        } else {
-            strCustomerId = customerId
-        }
         const subscriptions = await stripe.subscriptions.list({
-            customer: strCustomerId,
+            customer: customerId,
             status: "all",
             limit: 100,
         });
 
         const existingSubscription = subscriptions.data.find((subscription) =>
-            ["active", "trialing", "past_due", "unpaid", "incomplete"].includes(
-                subscription.status,
+            SUBSCRIPTION_STATUSES_THAT_BLOCK_NEW_CHECKOUT.includes(
+                subscription.status as (typeof SUBSCRIPTION_STATUSES_THAT_BLOCK_NEW_CHECKOUT)[number],
             ),
         );
 
         if (existingSubscription) {
+            const status = existingSubscription.status;
+
+            let errorMessage = "You already have a subscription.";
+
+            if (status === "past_due") {
+                errorMessage =
+                    "Your subscription has a payment problem. Please update your payment method.";
+            } else if (status === "unpaid") {
+                errorMessage =
+                    "Your subscription is unpaid. Please update your payment method.";
+            } else if (status === "incomplete") {
+                errorMessage =
+                    "Your previous subscription setup is incomplete. Please complete the payment process.";
+            } else if (status === "paused") {
+                errorMessage =
+                    "Your subscription is paused. Please manage your subscription to resume it.";
+            }
+
             return NextResponse.json(
                 {
-                    error: "You already have a subscription.",
+                    error: errorMessage,
+                    code: "SUBSCRIPTION_EXISTS",
+                    subscriptionStatus: status,
+                    subscriptionId: existingSubscription.id,
                 },
                 { status: 409 },
             );
@@ -169,6 +255,9 @@ export async function POST(request: Request) {
 
         /*
          * 4. Create Checkout Session.
+         *
+         * CANCELED and INCOMPLETE_EXPIRED subscriptions do not
+         * block a new subscription, so the user can start Checkout again.
          */
         const trialEnd = addOneCalendarMonth(new Date());
 
@@ -180,7 +269,7 @@ export async function POST(request: Request) {
                     enabled: false,
                 },
 
-                customer: strCustomerId,
+                customer: customerId,
 
                 line_items: [
                     {
