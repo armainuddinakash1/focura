@@ -49,9 +49,7 @@ export async function syncStripeSubscription(
         data: {
             stripeSubscriptionId: subscription.id,
             subscriptionStatus: status,
-            subscriptionEnd: new Date(
-                subscription.items.data[0].current_period_end * 1000,
-            ),
+            subscriptionEnd: new Date(currentPeriodEnd * 1000),
             cancelAtPeriodEnd: subscription.cancel_at_period_end,
         },
     });
