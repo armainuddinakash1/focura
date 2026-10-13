@@ -20,6 +20,7 @@ function SubscriptionPage() {
         hasPremiumAccess,
         subscriptionStatus,
         subscriptionEnd,
+        cancelAtPeriodEnd,
         subscriptionMessage,
         isLoading: subscriptionLoading,
         refreshSubscription,
@@ -273,24 +274,22 @@ function SubscriptionPage() {
                         <Alert className="mt-8">
                             <Sparkles className="size-4" />
 
-                            <AlertTitle>
-                                {subscriptionStatus === "TRIALING"
-                                    ? "Your free trial is active"
-                                    : "Your subscription is active"}
-                            </AlertTitle>
+                            <AlertTitle>{subscriptionMessage}</AlertTitle>
 
-                            <AlertDescription>
-                                {subscriptionMessage}
-
-                                {subscriptionEnd && (
+                            {subscriptionEnd && cancelAtPeriodEnd && (
+                                <AlertDescription>
                                     <span className="mt-1 block">
-                                        Subscription end:{" "}
+                                        Cancellation scheduled for:{" "}
                                         {new Date(
                                             subscriptionEnd,
                                         ).toLocaleDateString()}
                                     </span>
-                                )}
-                            </AlertDescription>
+                                    <span className="mt-1 block">
+                                        Your premium access remains active until
+                                        then.
+                                    </span>
+                                </AlertDescription>
+                            )}
                         </Alert>
                     )}
 
