@@ -24,6 +24,7 @@ type SubscriptionContextType = {
     hasPremiumAccess: boolean;
     subscriptionStatus: SubscriptionStatus;
     subscriptionEnd: string | null;
+    cancelAtPeriodEnd: boolean;
     subscriptionMessage: string;
     isLoading: boolean;
     refreshSubscription: () => Promise<void>;
@@ -44,6 +45,7 @@ export function SubscriptionProvider({
     const [subscriptionStatus, setSubscriptionStatus] =
         useState<SubscriptionStatus>(null);
     const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
+    const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
     const [subscriptionMessage, setSubscriptionMessage] = useState(
         "You don't have an active subscription.",
     );
@@ -53,6 +55,7 @@ export function SubscriptionProvider({
         setHasPremiumAccess(false);
         setSubscriptionStatus(null);
         setSubscriptionEnd(null);
+        setCancelAtPeriodEnd(false);
         setSubscriptionMessage("You don't have an active subscription.");
     }, []);
 
@@ -83,6 +86,7 @@ export function SubscriptionProvider({
             setSubscriptionStatus(data.subscriptionStatus ?? null);
 
             setSubscriptionEnd(data.subscriptionEnd ?? null);
+            setCancelAtPeriodEnd(Boolean(data.cancelAtPeriodEnd));
 
             setSubscriptionMessage(
                 data.subscriptionAccess?.message ??
@@ -106,6 +110,7 @@ export function SubscriptionProvider({
                 hasPremiumAccess,
                 subscriptionStatus,
                 subscriptionEnd,
+                cancelAtPeriodEnd,
                 subscriptionMessage,
                 isLoading,
                 refreshSubscription,
