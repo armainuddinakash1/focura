@@ -21,6 +21,7 @@ export async function GET() {
             select: {
                 subscriptionStatus: true,
                 subscriptionEnd: true,
+                cancelAtPeriodEnd: true,
             },
         });
         
@@ -37,7 +38,8 @@ export async function GET() {
             message: "Subscription status fetched successfully",
             subscriptionStatus: user.subscriptionStatus,
             subscriptionAccess,
-            subscribtionEnd: user.subscriptionEnd,
+            subscriptionEnd: user.subscriptionEnd,
+            cancelAtPeriodEnd: user.cancelAtPeriodEnd,
         });
     } catch (error) {
         console.error("Subscription fetch error:", error);
