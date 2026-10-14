@@ -113,6 +113,11 @@ NEXT_PUBLIC_CLERK_SIGN_IN_URL="/sign-in"
 NEXT_PUBLIC_CLERK_SIGN_UP_URL="/sign-up"
 NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL="/dashboard"
 NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL="/dashboard"
+
+STRIPE_SECRET_KEY="your_stripe_secret_key"
+STRIPE_WEBHOOK_SECRET="your_stripe_webhook_signing_secret"
+STRIPE_PRICE_ID="your_recurring_price_id"
+NEXT_PUBLIC_APP_URL="https://your-domain.com"
 ```
 
 ### Notes
@@ -120,6 +125,7 @@ NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL="/dashboard"
 - `DATABASE_URL` is required for Prisma and the PostgreSQL adapter.
 - Clerk environment variables are required for authentication and webhook verification.
 - The webhook secret must be configured in the Clerk dashboard so webhook requests can be validated.
+- Stripe environment variables are required for checkout, the customer portal, and webhook verification.
 
 ## Database Setup
 
@@ -196,6 +202,30 @@ The project listens for these events:
 - `user.deleted`
 
 This syncs the local Prisma user table with Clerk user records.
+
+### 4. Configure Stripe subscriptions and webhooks
+
+In Stripe's Customer Portal configuration, enable subscription cancellation and
+set its cancellation behavior to **at the end of the billing period**. The app
+does not override this dashboard setting when creating a portal session.
+
+Create a Stripe webhook endpoint at:
+
+```text
+https://your-domain.com/api/webhooks/stripe
+```
+
+Subscribe it to these events so subscription state, including scheduled
+cancellations, is synchronized to Prisma:
+
+- `customer.subscription.created`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+
+Copy the endpoint's signing secret into `STRIPE_WEBHOOK_SECRET`. The
+`customer.subscription.updated` event is the event Stripe emits when a
+subscription's `cancel_at_period_end` value changes; the webhook stores that
+value in `User.cancelAtPeriodEnd`.
 
 ## Running the Application
 
