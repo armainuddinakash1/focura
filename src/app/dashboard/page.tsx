@@ -1,16 +1,27 @@
 "use client";
 
 import { useAuth } from "@clerk/nextjs";
-import { ArrowRight, CheckCircle2, Circle, ListTodo } from "lucide-react";
+import { CheckCircle2, Circle, ListTodo } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-
 import TodoForm from "@/components/todo/TodoForm";
 import TodoList from "@/components/todo/TodoList";
 import { PageHeader } from "@/components/shared/page-header";
 import { LoadingState } from "@/components/shared/loading-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useSubscription } from "@/context/SubscriptionContext";
 
 interface Todo {
     id: string;
@@ -26,6 +37,8 @@ export default function DashboardPage() {
     const [todos, setTodos] = useState<Todo[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    const { hasPremiumAccess } = useSubscription();
 
     useEffect(() => {
         if (!isLoaded || !userId) return;
@@ -149,22 +162,64 @@ export default function DashboardPage() {
 
     return (
         <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-            <PageHeader
-                badge={
-                    <Badge variant="secondary" className="gap-2">
-                        <ListTodo className="h-3.5 w-3.5" />
-                        Today
-                    </Badge>
-                }
-                title="My focus list"
-                description="Keep your priorities clear, one task at a time."
-                action={
-                    <Button variant="secondary" size="sm" className="gap-2">
-                        Review plan
-                        <ArrowRight className="h-4 w-4" />
-                    </Button>
-                }
-            />
+            {!hasPremiumAccess ? (
+                <PageHeader
+                    badge={
+                        <Badge variant="secondary" className="gap-2">
+                            <ListTodo className="h-3.5 w-3.5" />
+                            Today
+                        </Badge>
+                    }
+                    title="My focus list"
+                    description="Keep your priorities clear, one task at a time."
+                    action={
+                        <AlertDialog>
+                            <AlertDialogTrigger
+                                render={
+                                    <Button
+                                        variant="outline"
+                                        size="lg"
+                                        className="gap-2 font-semibold"
+                                    >
+                                        10 / {totalTasks}
+                                    </Button>
+                                }
+                            ></AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                        You can only create 10 todos
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        You are using Focura free plan. You can
+                                        only create 10 todos with your plan.
+                                        Upgrade to create unlimited todos
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Close</AlertDialogCancel>
+                                    <AlertDialogAction>
+                                        <Link href="/subscription">
+                                            Upgrade
+                                        </Link>
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    }
+                />
+            ) : (
+                <PageHeader
+                    badge={
+                        <Badge variant="secondary" className="gap-2">
+                            <ListTodo className="h-3.5 w-3.5" />
+                            Today
+                        </Badge>
+                    }
+                    title="My focus list"
+                    description="Keep your priorities clear, one task at a time."
+                />
+            )}
 
             {error ? (
                 <div className="mt-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
