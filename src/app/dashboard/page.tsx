@@ -81,6 +81,20 @@ export default function DashboardPage() {
         setTodos((currentTodos) => [newTodo, ...currentTodos]);
     };
 
+    const handleReplaceTodo = (temporaryId: string, savedTodo: Todo) => {
+        setTodos((currentTodos) =>
+            currentTodos.map((todo) =>
+                todo.id === temporaryId ? savedTodo : todo,
+            ),
+        );
+    };
+
+    const handleRemoveTodo = (temporaryId: string) => {
+        setTodos((currentTodos) =>
+            currentTodos.filter((todo) => todo.id !== temporaryId),
+        );
+    };
+
     const handleUpdateTodo = (updatedTodo: Todo) => {
         setTodos((currentTodos) =>
             currentTodos.map((todo) =>
@@ -260,7 +274,11 @@ export default function DashboardPage() {
             )}
 
             <div className="mt-8 space-y-6">
-                <TodoForm onAddTodo={handleAddTodo} />
+                <TodoForm
+                    onAddTodo={handleAddTodo}
+                    onReplaceTodo={handleReplaceTodo}
+                    onRemoveTodo={handleRemoveTodo}
+                />
 
                 {isLoading ? (
                     <LoadingState label="Loading tasks..." />
