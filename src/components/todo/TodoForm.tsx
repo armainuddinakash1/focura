@@ -136,7 +136,7 @@ export default function TodoForm({
                         disabled={isLoading}
                     >
                         <Plus className="h-4 w-4" />
-                        {isLoading ? "Adding task..." : "Add task"}
+                        {isLoading ? "Saving..." : "Add task"}
                     </Button>
                 </form>
             </CardContent>
