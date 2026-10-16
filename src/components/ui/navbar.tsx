@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { appNavigation } from "@/config/navigation";
 import { useSubscription } from "@/context/SubscriptionContext";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 
 function Navbar() {
@@ -33,8 +34,10 @@ function Navbar() {
                     </div>
                 </Link>
 
-                <Show when="signed-out">
-                    <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
+                    <ThemeToggle />
+
+                    <Show when="signed-out">
                         <Link href="/sign-in">
                             <Button variant="ghost" size="sm">
                                 Sign In
@@ -43,37 +46,35 @@ function Navbar() {
                         <Link href="/sign-up">
                             <Button size="sm">Get started</Button>
                         </Link>
-                    </div>
-                </Show>
+                    </Show>
 
-                <Show when="signed-in">
-                    <nav className="hidden items-center gap-1 rounded-full border border-border bg-muted/40 p-1 md:flex">
-                        {appNavigation.map(({ href, label, icon: Icon }) => {
-                            const isActive = pathname === href;
+                    <Show when="signed-in">
+                        <nav className="hidden items-center gap-1 rounded-full border border-border bg-muted/40 p-1 md:flex">
+                            {appNavigation.map(({ href, label, icon: Icon }) => {
+                                const isActive = pathname === href;
 
-                            return (
-                                <Link
-                                    key={href}
-                                    href={href}
-                                    className="contents"
-                                >
-                                    <Button
-                                        variant={isActive ? "default" : "ghost"}
-                                        size="sm"
-                                        className={cn(
-                                            "gap-2 rounded-full px-3",
-                                            isActive && "shadow-sm",
-                                        )}
+                                return (
+                                    <Link
+                                        key={href}
+                                        href={href}
+                                        className="contents"
                                     >
-                                        <Icon className="h-3.5 w-3.5" />
-                                        {label}
-                                    </Button>
-                                </Link>
-                            );
-                        })}
-                    </nav>
+                                        <Button
+                                            variant={isActive ? "default" : "ghost"}
+                                            size="sm"
+                                            className={cn(
+                                                "gap-2 rounded-full px-3",
+                                                isActive && "shadow-sm",
+                                            )}
+                                        >
+                                            <Icon className="h-3.5 w-3.5" />
+                                            {label}
+                                        </Button>
+                                    </Link>
+                                );
+                            })}
+                        </nav>
 
-                    <div className="flex items-center gap-2">
                         <Link
                             href="/subscription"
                             className="hidden sm:inline-flex"
@@ -101,8 +102,8 @@ function Navbar() {
                             <Menu className="h-4 w-4" />
                         </Button>
                         <UserButton />
-                    </div>
-                </Show>
+                    </Show>
+                </div>
             </div>
         </header>
     );
