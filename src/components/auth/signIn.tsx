@@ -116,9 +116,9 @@ function SignInComponent() {
                                 }
                             >
                                 {showPassword ? (
-                                    <EyeOff className="h-4 w-4 text-gray-500" />
+                                    <EyeOff className="h-4 w-4 text-muted-foreground" />
                                 ) : (
-                                    <Eye className="h-4 w-4 text-gray-500" />
+                                    <Eye className="h-4 w-4 text-muted-foreground" />
                                 )}
                             </button>
                         </div>
@@ -136,7 +136,7 @@ function SignInComponent() {
                             </Alert>
                         )} */}
                     {errorMessage && (
-                        <p className="text-sm text-red-600">{errorMessage}</p>
+                        <p className="text-sm text-destructive">{errorMessage}</p>
                         // got to gpts fix error types chat
                     )}
                     <div id="clerk-captcha" />
