@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 
 import Navbar from "@/components/ui/navbar";
 import { SubscriptionProvider } from "@/context/SubscriptionContext";
@@ -31,8 +32,12 @@ export default function RootLayout({
         <html
             lang="en"
             className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+            suppressHydrationWarning
         >
             <body className="min-h-full text-foreground">
+                <Script id="theme-preference" strategy="beforeInteractive">
+                    {`try { if (localStorage.getItem("focura-theme") === "dark") document.documentElement.classList.add("dark"); } catch {}`}
+                </Script>
                 <ClerkProvider>
                     <SubscriptionProvider>
                         <div className="flex min-h-screen flex-col">
