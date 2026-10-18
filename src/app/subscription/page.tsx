@@ -326,15 +326,23 @@ function SubscriptionPage() {
                     {canStartNewSubscription && !loading && (
                         <>
                             <AspectRatio ratio={1 / 1}>
+                                {/* Light theme image */}
                                 <Image
-                                    src="/test_payment.png"
+                                    src="/test_payment_light.png"
                                     alt="Test payment instructions"
-                                    className="rounded-md object-cover"
+                                    className="rounded-md object-cover block dark:hidden"
+                                    width={1254}
+                                    height={1254}
+                                />
+                                {/* Dark theme image */}
+                                <Image
+                                    src="/test_payment_dark.png"
+                                    alt="Test payment instructions"
+                                    className="rounded-md object-cover hidden dark:block"
                                     width={1254}
                                     height={1254}
                                 />
                             </AspectRatio>
-
                             <Button
                                 className="mt-8 w-full sm:w-auto"
                                 onClick={handleSubscription}

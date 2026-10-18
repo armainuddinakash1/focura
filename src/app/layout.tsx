@@ -36,7 +36,15 @@ export default function RootLayout({
         >
             <body className="min-h-full text-foreground">
                 <Script id="theme-preference" strategy="beforeInteractive">
-                    {`try { if (localStorage.getItem("focura-theme") === "dark") document.documentElement.classList.add("dark"); } catch {}`}
+                    {`try {
+                        const theme = localStorage.getItem("focura-theme");
+
+                        if (theme === "dark") {
+                            document.documentElement.classList.add("dark");
+                        } else {
+                            document.documentElement.classList.remove("dark");
+                        }
+                    } catch {}`}
                 </Script>
                 <ClerkProvider>
                     <SubscriptionProvider>
