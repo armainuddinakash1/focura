@@ -35,18 +35,6 @@ function Navbar() {
                         </p>
                     </div>
                 </Link>
-
-                <Show when="signed-out">
-                    <Link href="/sign-in">
-                        <Button variant="ghost" size="sm">
-                            Sign In
-                        </Button>
-                    </Link>
-                    <Link href="/sign-up">
-                        <Button size="sm">Get started</Button>
-                    </Link>
-                </Show>
-
                 <Show when="signed-in">
                     <nav className="hidden items-center gap-1 rounded-full border border-border bg-muted/40 p-1 md:flex">
                         {appNavigation.map(({ href, label, icon: Icon }) => {
