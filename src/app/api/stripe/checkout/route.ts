@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { addOneCalendarMonth } from "@/lib/add-one-calendar-month";
 
+// Prevent a second checkout while the customer has a subscription in a state
+// that still requires attention or may become active.
 const SUBSCRIPTION_STATUSES_THAT_BLOCK_NEW_CHECKOUT = [
     "active",
     "trialing",
@@ -17,6 +19,7 @@ const SUBSCRIPTION_STATUSES_THAT_BLOCK_NEW_CHECKOUT = [
 
 export async function POST(request: Request) {
     try {
+        // Require an authenticated Clerk user before accessing billing data.
         const { userId } = await auth();
 
         if (!userId) {
@@ -26,6 +29,8 @@ export async function POST(request: Request) {
             );
         }
 
+        // The attempt ID is used as part of Stripe’s idempotency key so retries
+        // of the same checkout attempt do not create duplicate sessions.
         const body = await request.json();
         const { checkoutAttemptId } = body;
 
@@ -36,6 +41,7 @@ export async function POST(request: Request) {
             );
         }
 
+        // Map the authenticated Clerk identity to the local application user.
         const user = await prisma.user.findUnique({
             where: {
                 clerkId: userId,
@@ -49,23 +55,39 @@ export async function POST(request: Request) {
             );
         }
 
+        // Reuse the stored Stripe customer when possible; validate that it still exists
+        // and synchronize the local subscription fields with Stripe.
         let customerId = user.stripeCustomerId;
 
-        /*
-         * 1. Verify the existing Stripe Customer.
-         *
-         * The database may contain a Stripe Customer ID that no longer
-         * exists, for example if the Customer was deleted from Stripe.
-         */
         if (customerId) {
             try {
                 const customer = await stripe.customers.retrieve(customerId);
 
+                // A deleted Stripe customer cannot be used for checkout, so clear
+                // its ID and the subscription data associated with it locally.
                 if (customer.deleted) {
+                    await prisma.user.updateMany({
+                        where: {
+                            id: user.id,
+                            stripeCustomerId: customerId,
+                        },
+                        data: {
+                            stripeCustomerId: null,
+                            stripeSubscriptionId: null,
+                            subscriptionStatus: null,
+                            subscriptionEnd: null,
+                            cancelAtPeriodEnd: false,
+                        },
+                    });
+
                     customerId = null;
                 }
 
                 if (!customer.deleted) {
+                    // Check all subscription statuses, not only active ones, because
+                    // incomplete or payment-problem subscriptions should also block checkout.
+                    // Recheck subscriptions immediately before creating checkout. This also
+                    // covers the path where a Stripe customer was just created or recovered.
                     const subscriptions = await stripe.subscriptions.list({
                         customer: customer.id,
                         status: "all",
@@ -79,6 +101,8 @@ export async function POST(request: Request) {
                             ),
                     );
 
+                    // Refresh the local subscription snapshot when Stripe has a
+                    // subscription that should prevent a new checkout.
                     if (existingSubscription) {
                         await prisma.user.updateMany({
                             where: {
@@ -107,25 +131,46 @@ export async function POST(request: Request) {
                             },
                         });
                     } else {
+                        // No blocking subscription remains for this customer; clear
+                        // stale local billing references so a new customer can be created.
                         await prisma.user.updateMany({
                             where: {
                                 id: user.id,
                                 stripeCustomerId: customerId,
                             },
                             data: {
+                                stripeCustomerId: null,
+                                stripeSubscriptionId: null,
                                 subscriptionStatus: null,
                                 subscriptionEnd: null,
                                 cancelAtPeriodEnd: false,
-                                stripeSubscriptionId: null,
                             },
                         });
+
+                        customerId = null;
                     }
                 }
             } catch (error) {
+                // Stripe may report that the saved customer ID no longer exists.
+                // Recover from that specific case; let other errors reach the outer handler.
                 if (
                     error instanceof Stripe.errors.StripeError &&
                     error.code === "resource_missing"
                 ) {
+                    await prisma.user.updateMany({
+                        where: {
+                            id: user.id,
+                            stripeCustomerId: customerId,
+                        },
+                        data: {
+                            stripeCustomerId: null,
+                            stripeSubscriptionId: null,
+                            subscriptionStatus: null,
+                            subscriptionEnd: null,
+                            cancelAtPeriodEnd: false,
+                        },
+                    });
+
                     customerId = null;
                 } else {
                     throw error;
@@ -133,15 +178,9 @@ export async function POST(request: Request) {
             }
         }
 
-        /*
-         * 2. Create a Stripe Customer if the stored Customer ID
-         *    is missing or invalid.
-         *
-         * The Stripe idempotency key prevents repeated customer
-         * creation requests for the same local user from creating
-         * multiple Stripe Customers.
-         */
         if (!customerId) {
+            // Create a Stripe customer only when no valid customer ID is available.
+            // The idempotency key helps avoid duplicate customers if this request is retried.
             const customer = await stripe.customers.create(
                 {
                     email: user.email,
@@ -157,14 +196,8 @@ export async function POST(request: Request) {
                     idempotencyKey: `customer_${user.id}`,
                 },
             );
-
-            /*
-             * Only set stripeCustomerId if another concurrent request
-             * has not already set it.
-             *
-             * This prevents two concurrent requests from overwriting
-             * each other's Stripe Customer ID.
-             */
+            // Only attach the new customer if another request has not already done so.
+            // This conditional update helps handle concurrent checkout requests safely.
             const result = await prisma.user.updateMany({
                 where: {
                     id: user.id,
@@ -176,15 +209,10 @@ export async function POST(request: Request) {
             });
 
             if (result.count === 1) {
-                /*
-                 * This request successfully stored the Stripe Customer.
-                 */
                 customerId = customer.id;
             } else {
-                /*
-                 * Another concurrent request already stored the
-                 * Stripe Customer ID. Use the database value instead.
-                 */
+                // Another request may have won the race to save a customer ID;
+                // read the persisted value rather than overwriting it.
                 const updatedUser = await prisma.user.findUniqueOrThrow({
                     where: {
                         id: user.id,
@@ -204,13 +232,6 @@ export async function POST(request: Request) {
             }
         }
 
-        /*
-         * 3. Ask Stripe whether this Customer already has a
-         *    subscription that prevents creating another one.
-         *
-         * Stripe is the source of truth here. Do not rely only
-         * on the local subscriptionStatus field.
-         */
         const subscriptions = await stripe.subscriptions.list({
             customer: customerId,
             status: "all",
@@ -224,6 +245,7 @@ export async function POST(request: Request) {
         );
 
         if (existingSubscription) {
+            // Return a conflict response instead of allowing a duplicate subscription.
             const status = existingSubscription.status;
 
             let errorMessage = "You already have a subscription.";
@@ -253,14 +275,12 @@ export async function POST(request: Request) {
             );
         }
 
-        /*
-         * 4. Create Checkout Session.
-         *
-         * CANCELED and INCOMPLETE_EXPIRED subscriptions do not
-         * block a new subscription, so the user can start Checkout again.
-         */
+        // Calculate the trial end using calendar-month logic rather than assuming
+        // every month contains a fixed number of days.
         const trialEnd = addOneCalendarMonth(new Date());
 
+        // Create a Stripe-hosted subscription checkout session with the configured
+        // price, redirect URLs, trial period, and app-user metadata.
         const session = await stripe.checkout.sessions.create(
             {
                 mode: "subscription",
@@ -286,6 +306,8 @@ export async function POST(request: Request) {
                     `${process.env.NEXT_PUBLIC_APP_URL}` +
                     "/subscription?checkout=canceled",
 
+                // This message is specifically for test mode; update or remove it
+                // before enabling live payments.
                 custom_text: {
                     submit: {
                         message:
@@ -305,18 +327,19 @@ export async function POST(request: Request) {
                 },
             },
             {
-                /*
-                 * Use the stable checkout attempt ID rather than
-                 * Date.now() so the same attempt can safely be retried.
-                 */
+                // Reusing this key for the same user and attempt makes session
+                // creation safe to retry without creating duplicate sessions.
                 idempotencyKey: `checkout_${user.id}_${checkoutAttemptId}`,
             },
         );
 
+        // The client can redirect the user to this Stripe Checkout URL.
         return NextResponse.json({
             url: session.url,
         });
     } catch (error) {
+        // Log the underlying error for diagnostics while returning a generic
+        // message to avoid exposing internal details to the client.
         console.error("Stripe checkout error:", error);
 
         return NextResponse.json(
