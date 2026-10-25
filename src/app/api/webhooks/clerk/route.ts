@@ -210,7 +210,6 @@ export async function POST(req: NextRequest) {
                             email,
                             firstName: event.data.first_name,
                             lastName: event.data.last_name,
-                            deletedAt: null,
                         },
                     });
                 } else {
@@ -239,7 +238,6 @@ export async function POST(req: NextRequest) {
                                 clerkId: clerkUserId,
                                 firstName: event.data.first_name,
                                 lastName: event.data.last_name,
-                                deletedAt: null,
                             },
                         });
                     } else {
