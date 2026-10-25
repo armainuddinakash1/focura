@@ -80,15 +80,13 @@ function Navbar() {
                                       : "Upgrade"}
                             </Button>
                         </Link>
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className="md:hidden"
+                        <div
+                            className="md:hidden flex items-center"
                             aria-label="Open navigation"
                         >
                             <Sheet open={open} onOpenChange={setOpen}>
                                 <SheetTrigger>
-                                    <Menu className="h-4 w-4" />
+                                    <Menu className="h-6 w-6" />
                                 </SheetTrigger>
                                 <SheetContent
                                     showCloseButton={false}
@@ -138,7 +136,7 @@ function Navbar() {
                                     </div>
                                 </SheetContent>
                             </Sheet>
-                        </Button>
+                        </div>
                         <div className="hidden md:inline-flex">
                             <UserButton />
                         </div>
