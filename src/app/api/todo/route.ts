@@ -108,7 +108,7 @@ export async function POST(request: Request) {
         if (todoCount >= 10) {
             return NextResponse.json(
                 {
-                    error: "Free users can only create up to 10 todos. Subscribe to create more.",
+                    error: "Free users can only create up to 10 todos. Upgrade to create more.",
                 },
                 { status: 403 },
             );
