@@ -71,7 +71,7 @@ function SignUpComponent() {
         }
 
         try {
-            const createResult = await signUp.password({
+            const createResult = await signUp.create({
                 emailAddress,
                 password,
                 firstName,
