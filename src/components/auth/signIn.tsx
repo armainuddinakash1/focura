@@ -139,7 +139,6 @@ function SignInComponent() {
                         <p className="text-sm text-destructive">{errorMessage}</p>
                         // got to gpts fix error types chat
                     )}
-                    <div id="clerk-captcha" />
                     <Button
                         type="submit"
                         className="w-full"
